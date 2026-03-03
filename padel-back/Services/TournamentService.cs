@@ -44,9 +44,10 @@ public class TournamentService(PadelDbContext db)
                     tm.Team.PlayerTeams.Any(pt => pt.PlayerId == playerId))));
         }
 
-        // Exclude broken tournaments with no matches or no players
+        // Exclude broken tournaments with no valid matches (need teams with players)
         query = query.Where(t => t.Matches.Any(m =>
-            m.TeamMatches.Any(tm => tm.Team.PlayerTeams.Any())));
+            m.TeamMatches.Count >= 2 &&
+            m.TeamMatches.All(tm => tm.Team.PlayerTeams.Count >= 2)));
 
         var tournaments = await query.OrderByDescending(t => t.Date).ToListAsync();
 
@@ -145,6 +146,9 @@ public class TournamentService(PadelDbContext db)
     {
         var tournament = await FullTournamentQuery()
             .Where(t => !t.IsFinished && !t.IsCancelled && t.HostPlayerId != null)
+            .Where(t => t.Matches.Any(m =>
+                m.TeamMatches.Count >= 2 &&
+                m.TeamMatches.All(tm => tm.Team.PlayerTeams.Count >= 2)))
             .Where(t => t.HostPlayerId == playerId || t.Matches.Any(m =>
                 m.TeamMatches.Any(tm =>
                     tm.Team.PlayerTeams.Any(pt => pt.PlayerId == playerId))))
@@ -186,7 +190,9 @@ public class TournamentService(PadelDbContext db)
     public async Task<List<TournamentResult>> GetUnfinishedTournaments(int playerId, bool isAdmin = false)
     {
         var query = FullTournamentQuery()
-            .Where(t => !t.IsFinished && !t.IsCancelled && t.Matches.Any());
+            .Where(t => !t.IsFinished && !t.IsCancelled && t.Matches.Any(m =>
+                m.TeamMatches.Count >= 2 &&
+                m.TeamMatches.All(tm => tm.Team.PlayerTeams.Count >= 2)));
 
         if (!isAdmin)
         {

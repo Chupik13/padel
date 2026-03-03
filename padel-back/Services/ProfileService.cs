@@ -73,7 +73,7 @@ public class ProfileService(PadelDbContext db)
                     .ThenInclude(tm => tm.Team)
                         .ThenInclude(t => t.PlayerTeams)
                             .ThenInclude(pt => pt.Player)
-            .Where(t => t.Matches.Any(m =>
+            .Where(t => !t.IsCancelled && t.Matches.Any(m =>
                 m.TeamMatches.Any(tm =>
                     tm.Team.PlayerTeams.Any(pt => pt.PlayerId == playerId))))
             .OrderByDescending(t => t.Date)
@@ -148,7 +148,7 @@ public class ProfileService(PadelDbContext db)
                 .ThenInclude(m => m.TeamMatches)
                     .ThenInclude(tm => tm.Team)
                         .ThenInclude(t => t.PlayerTeams)
-            .Where(t => t.SeasonId == seasonId)
+            .Where(t => t.SeasonId == seasonId && !t.IsCancelled)
             .ToListAsync();
 
         var playerScores = new Dictionary<int, double>();

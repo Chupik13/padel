@@ -138,7 +138,7 @@ public class SeasonService(PadelDbContext db, TournamentService tournamentServic
             SeasonStart = season.SeasonStart,
             SeasonEnd = season.SeasonEnd,
             RequireGamesCount = season.RequireGamesCount,
-            TournamentsPlayed = season.Tournaments.Count,
+            TournamentsPlayed = season.Tournaments.Count(t => !t.IsCancelled),
             IsCurrent = isCurrent,
             LeaderBoard = leaderBoard,
             SuperGame = superGame
@@ -149,7 +149,7 @@ public class SeasonService(PadelDbContext db, TournamentService tournamentServic
     {
         var playerScores = new Dictionary<int, (Player Player, double TotalSeasonScore, int TournamentCount)>();
 
-        foreach (var tournament in season.Tournaments)
+        foreach (var tournament in season.Tournaments.Where(t => !t.IsCancelled))
         {
             var tournamentPlayerScores = new Dictionary<int, (Player Player, double TotalScore, int MatchCount)>();
 
