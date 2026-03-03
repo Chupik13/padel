@@ -116,9 +116,15 @@ export default function TournamentsPage() {
                       {getAllPlayers(t).length} игроков
                     </span>
                   </div>
-                  <div className="tournament-badges">
-                    {t.isBalanced && t.seasonId == null && <span className="star-blue" title="Баланс">&#9733;</span>}
-                    {t.seasonId != null && <span className="star-gold" title="Сезонная">&#9733;</span>}
+                  <div className="tournament-tags">
+                    {t.isFinished
+                      ? <span className="tag tag-green">Завершён</span>
+                      : <span className="tag tag-red">Не завершён</span>
+                    }
+                    {t.seasonId != null
+                      ? <span className="tag tag-gold">Сезонная</span>
+                      : <span className="tag tag-blue">Товарищеская</span>
+                    }
                   </div>
                 </div>
                 {expanded.has(t.id) && (

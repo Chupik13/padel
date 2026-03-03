@@ -919,18 +919,43 @@ html, body {
   color: var(--text-muted);
 }
 
-.tournament-badges {
+/* ======== Tournament tags ======== */
+.tournament-tags {
   display: flex;
   gap: 6px;
-  font-size: 1.2rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.star-blue {
-  color: var(--blue);
+.tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 
-.star-gold {
+.tag-green {
+  background: rgba(14, 165, 115, 0.15);
+  color: var(--accent);
+}
+
+.tag-red {
+  background: rgba(231, 76, 60, 0.15);
+  color: var(--danger);
+}
+
+.tag-gold {
+  background: rgba(240, 192, 64, 0.15);
   color: var(--gold);
+}
+
+.tag-blue {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--blue);
 }
 
 .tournament-card-body {
