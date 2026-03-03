@@ -73,7 +73,7 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
       <div className="screen center-content">
         <p className="subtitle">Нет матчей для отображения</p>
         {onCancel && (
-          <button className="btn btn-danger" style={{ maxWidth: 360, width: '100%' }} onClick={onCancel}>
+          <button className="btn btn-danger" style={{ maxWidth: 360, width: '100%', flex: 'none' }} onClick={onCancel}>
             Отменить турнир
           </button>
         )}

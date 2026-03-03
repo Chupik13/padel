@@ -44,8 +44,9 @@ public class TournamentService(PadelDbContext db)
                     tm.Team.PlayerTeams.Any(pt => pt.PlayerId == playerId))));
         }
 
-        // Exclude broken tournaments with no matches
-        query = query.Where(t => t.Matches.Any());
+        // Exclude broken tournaments with no matches or no players
+        query = query.Where(t => t.Matches.Any(m =>
+            m.TeamMatches.Any(tm => tm.Team.PlayerTeams.Any())));
 
         var tournaments = await query.OrderByDescending(t => t.Date).ToListAsync();
 
@@ -226,6 +227,7 @@ public class TournamentService(PadelDbContext db)
             }
         }
 
+        tournament.IsEarlyFinished = true;
         tournament.IsFinished = true;
         await db.SaveChangesAsync();
         return true;

@@ -77,6 +77,7 @@ public static class TournamentMapper
             CurrentMatchIndex = tournament.CurrentMatchIndex,
             HostPlayerId = tournament.HostPlayerId,
             IsFinished = tournament.IsFinished,
+            IsEarlyFinished = tournament.IsEarlyFinished,
             IsCancelled = tournament.IsCancelled
         };
     }
