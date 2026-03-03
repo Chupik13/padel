@@ -1,0 +1,233 @@
+import type { Match } from '../types';
+
+/** All combinations of `k` elements from `arr` */
+function combinations<T>(arr: T[], k: number): T[][] {
+  if (k === 0) return [[]];
+  if (arr.length < k) return [];
+  const [first, ...rest] = arr;
+  const withFirst = combinations(rest, k - 1).map((c) => [first, ...c]);
+  const withoutFirst = combinations(rest, k);
+  return [...withFirst, ...withoutFirst];
+}
+
+/** 3 ways to split 4 players into 2 pairs */
+function pairings(four: number[]): [number, number, number, number][] {
+  const [a, b, c, d] = four;
+  return [
+    [a, b, c, d], // AB vs CD
+    [a, c, b, d], // AC vs BD
+    [a, d, b, c], // AD vs BC
+  ];
+}
+
+/** Target k: how many times each pair should be teammates */
+function targetK(n: number): number {
+  if (n === 4) return 1;
+  if (n === 5) return 1;
+  if (n === 6) return 2;
+  return 1;
+}
+
+/** Encode a pair as string key */
+function pairKey(a: number, b: number): string {
+  return a < b ? `${a},${b}` : `${b},${a}`;
+}
+
+type MatchCandidate = {
+  team1: [number, number];
+  team2: [number, number];
+  resting: number[];
+  teamPairs: [string, string]; // precomputed pair keys
+};
+
+export function generateSchedule(playerIds: number[], customK?: number): Match[] {
+  const n = playerIds.length;
+  const k = customK ?? targetK(n);
+
+  // Build pair count map
+  const allPairKeys: string[] = [];
+  const pairCounts: Record<string, number> = {};
+  for (const [a, b] of combinations(playerIds, 2)) {
+    const key = pairKey(a, b);
+    allPairKeys.push(key);
+    pairCounts[key] = 0;
+  }
+
+  // Generate all possible matches, indexed by which pair they cover
+  const candidatesByPair: Record<string, MatchCandidate[]> = {};
+  for (const key of allPairKeys) {
+    candidatesByPair[key] = [];
+  }
+
+  for (const four of combinations(playerIds, 4)) {
+    const resting = playerIds.filter((id) => !four.includes(id));
+    for (const [a, b, c, d] of pairings(four)) {
+      const p1 = pairKey(a, b);
+      const p2 = pairKey(c, d);
+      const cand: MatchCandidate = {
+        team1: [a, b],
+        team2: [c, d],
+        resting,
+        teamPairs: [p1, p2],
+      };
+      candidatesByPair[p1].push(cand);
+      candidatesByPair[p2].push(cand);
+    }
+  }
+
+  const totalPairs = allPairKeys.length;
+  const expectedMatches = (totalPairs * k) / 2;
+  const result: MatchCandidate[] = [];
+  const usedSet = new Set<MatchCandidate>();
+
+  function backtrack(): boolean {
+    if (result.length === expectedMatches) return true;
+
+    // Find the pair with the smallest count (that hasn't reached k yet)
+    let minCount = k;
+    let minPair = '';
+    for (const key of allPairKeys) {
+      if (pairCounts[key] < minCount) {
+        minCount = pairCounts[key];
+        minPair = key;
+        if (minCount === 0) break; // Can't do better than 0
+      }
+    }
+
+    if (!minPair) return false;
+
+    // Only try candidates that cover this specific pair
+    for (const cand of candidatesByPair[minPair]) {
+      if (usedSet.has(cand)) continue;
+      const [p1, p2] = cand.teamPairs;
+      if (pairCounts[p1] >= k || pairCounts[p2] >= k) continue;
+
+      // Apply
+      pairCounts[p1]++;
+      pairCounts[p2]++;
+      result.push(cand);
+      usedSet.add(cand);
+
+      if (backtrack()) return true;
+
+      // Undo
+      result.pop();
+      usedSet.delete(cand);
+      pairCounts[p1]--;
+      pairCounts[p2]--;
+    }
+
+    return false;
+  }
+
+  backtrack();
+
+  const matches: Match[] = result.map((m) => ({
+    team1: m.team1,
+    team2: m.team2,
+    resting: m.resting,
+  }));
+
+  return reorderMatches(matches);
+}
+
+export function generateFixedSchedule(playerIds: number[], matchCount: number): Match[] {
+  // Build all match candidates
+  const candidates: MatchCandidate[] = [];
+  for (const four of combinations(playerIds, 4)) {
+    const resting = playerIds.filter((id) => !four.includes(id));
+    for (const [a, b, c, d] of pairings(four)) {
+      candidates.push({
+        team1: [a, b],
+        team2: [c, d],
+        resting,
+        teamPairs: [pairKey(a, b), pairKey(c, d)],
+      });
+    }
+  }
+
+  const playCounts: Record<number, number> = {};
+  for (const id of playerIds) playCounts[id] = 0;
+
+  const teamPairCounts: Record<string, number> = {};
+  for (const [a, b] of combinations(playerIds, 2)) {
+    teamPairCounts[pairKey(a, b)] = 0;
+  }
+
+  const result: MatchCandidate[] = [];
+  const usedIndices = new Set<number>();
+
+  for (let pick = 0; pick < matchCount; pick++) {
+    // Reset used set if all candidates exhausted (4-player case: only 3 unique groups×pairings)
+    if (usedIndices.size === candidates.length) {
+      usedIndices.clear();
+    }
+
+    let bestIdx = -1;
+    let bestScore = Infinity;
+
+    for (let i = 0; i < candidates.length; i++) {
+      if (usedIndices.has(i)) continue;
+      const cand = candidates[i];
+
+      const playing = [...cand.team1, ...cand.team2];
+      const playScore = playing.reduce((s, id) => s + playCounts[id], 0);
+      const pairScore = cand.teamPairs.reduce((s, k) => s + teamPairCounts[k], 0);
+      const restScore = cand.resting.reduce((s, id) => s + playCounts[id], 0);
+
+      const score = playScore * 1000 + pairScore * 10 - restScore;
+      if (score < bestScore) {
+        bestScore = score;
+        bestIdx = i;
+      }
+    }
+
+    const chosen = candidates[bestIdx];
+    usedIndices.add(bestIdx);
+    result.push(chosen);
+
+    // Update counts
+    for (const id of [...chosen.team1, ...chosen.team2]) playCounts[id]++;
+    for (const k of chosen.teamPairs) teamPairCounts[k]++;
+  }
+
+  const matches: Match[] = result.map((m) => ({
+    team1: m.team1,
+    team2: m.team2,
+    resting: m.resting,
+  }));
+
+  return reorderMatches(matches);
+}
+
+/** Reorder matches so no player sits out two games in a row (greedy, best-effort). */
+function reorderMatches(matches: Match[]): Match[] {
+  if (matches.length <= 1) return matches;
+
+  const remaining = new Set(matches.map((_, i) => i));
+  const ordered: Match[] = [];
+
+  // Pick the first match arbitrarily
+  remaining.delete(0);
+  ordered.push(matches[0]);
+
+  while (remaining.size > 0) {
+    const prevResting = new Set(ordered[ordered.length - 1].resting);
+    let bestIdx = -1;
+    let bestOverlap = Infinity;
+
+    for (const i of remaining) {
+      const overlap = matches[i].resting.filter((id) => prevResting.has(id)).length;
+      if (overlap < bestOverlap) {
+        bestOverlap = overlap;
+        bestIdx = i;
+        if (overlap === 0) break; // Can't do better
+      }
+    }
+
+    remaining.delete(bestIdx);
+    ordered.push(matches[bestIdx]);
+  }
+
+  return ordered;
+}

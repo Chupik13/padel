@@ -1,0 +1,48 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# .NET
+bin/
+obj/
+
+# Build artifacts
+*.tar.gz
+
+# Docker & deploy
+docker-compose.yml
+.dockerignore
+build-and-save.sh
+padel-back/Dockerfile
+padel-front/Dockerfile
+padel-front/nginx.conf
+
+# HTTP request files
+padel-back/padel.http
+
+# Avatars (user uploads)
+padel-back/wwwroot/avatars/
+
+# Claude
+.claude/
