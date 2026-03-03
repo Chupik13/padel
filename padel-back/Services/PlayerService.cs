@@ -23,7 +23,7 @@ public class PlayerService(PadelDbContext db)
     public async Task<GlobalLeaderboardResult> GetGlobalLeaderboard()
     {
         var tournaments = await db.Tournaments
-            .Where(t => t.IsFinished && t.Matches.Any())
+            .Where(t => t.IsFinished && !t.IsCancelled && t.Matches.Any())
             .Include(t => t.Matches)
                 .ThenInclude(m => m.TeamMatches)
                     .ThenInclude(tm => tm.Team)

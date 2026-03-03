@@ -27,6 +27,7 @@ export default function SlideMenu({ open, onClose }: Props) {
     { label: 'Профиль', path: '/profile' },
     { label: 'Турниры', path: '/tournaments' },
     { label: 'Сезон', path: '/seasons' },
+    { label: 'Что нового', path: '/changelog' },
   ];
 
   return (

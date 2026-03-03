@@ -8,6 +8,11 @@ namespace padel.Endpoints;
 
 public static class TournamentEndpoints
 {
+    private const string AdminLogin = "t224215";
+
+    private static bool IsAdmin(HttpContext httpContext) =>
+        httpContext.User.FindFirstValue(ClaimTypes.Name) == AdminLogin;
+
     public static void MapTournamentEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/tournaments").RequireAuthorization();
@@ -51,6 +56,16 @@ public static class TournamentEndpoints
             return result is null ? Results.NoContent() : Results.Ok(result);
         });
 
+        group.MapGet("/unfinished", async (TournamentService tournamentService, HttpContext httpContext) =>
+        {
+            var playerIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
+                return Results.Unauthorized();
+
+            var result = await tournamentService.GetUnfinishedTournaments(playerId, IsAdmin(httpContext));
+            return Results.Ok(result);
+        });
+
         group.MapPut("/{id}/score", async (int id, UpdateScoreRequest request, TournamentService tournamentService,
             IHubContext<TournamentHub> hub, HttpContext httpContext) =>
         {
@@ -58,7 +73,7 @@ public static class TournamentEndpoints
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
                 return Results.Unauthorized();
 
-            var result = await tournamentService.UpdateMatchScore(id, playerId, request);
+            var result = await tournamentService.UpdateMatchScore(id, playerId, request, IsAdmin(httpContext));
             if (result is null)
                 return Results.Forbid();
 
@@ -75,7 +90,7 @@ public static class TournamentEndpoints
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
                 return Results.Unauthorized();
 
-            var success = await tournamentService.NavigateMatch(id, playerId, request.MatchIndex);
+            var success = await tournamentService.NavigateMatch(id, playerId, request.MatchIndex, IsAdmin(httpContext));
             if (!success)
                 return Results.Forbid();
 
@@ -91,7 +106,7 @@ public static class TournamentEndpoints
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
                 return Results.Unauthorized();
 
-            var success = await tournamentService.FinishTournament(id, playerId);
+            var success = await tournamentService.FinishTournament(id, playerId, IsAdmin(httpContext));
             if (!success)
                 return Results.Forbid();
 
@@ -107,7 +122,7 @@ public static class TournamentEndpoints
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
                 return Results.Unauthorized();
 
-            var success = await tournamentService.EarlyFinishTournament(id, playerId);
+            var success = await tournamentService.EarlyFinishTournament(id, playerId, IsAdmin(httpContext));
             if (!success)
                 return Results.Forbid();
 
@@ -123,7 +138,7 @@ public static class TournamentEndpoints
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
                 return Results.Unauthorized();
 
-            var success = await tournamentService.CancelTournament(id, playerId);
+            var success = await tournamentService.CancelTournament(id, playerId, IsAdmin(httpContext));
             if (!success)
                 return Results.Forbid();
 

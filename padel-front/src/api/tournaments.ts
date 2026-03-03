@@ -23,6 +23,10 @@ export function getActiveTournament(): Promise<TournamentResult | undefined> {
   return apiFetch<TournamentResult | undefined>('/api/tournaments/active');
 }
 
+export function getUnfinishedTournaments(): Promise<TournamentResult[]> {
+  return apiFetch<TournamentResult[]>('/api/tournaments/unfinished');
+}
+
 export function updateMatchScore(id: number, data: UpdateScoreRequest): Promise<TournamentResult> {
   return apiFetch<TournamentResult>(`/api/tournaments/${id}/score`, {
     method: 'PUT',

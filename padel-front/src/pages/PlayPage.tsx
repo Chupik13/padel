@@ -4,7 +4,7 @@ import type { PlayerResult, TournamentResult } from '../types/api';
 import { generateSchedule, generateFixedSchedule } from '../utils/scheduler';
 import { saveTournament as saveLocal, loadTournament, clearTournament } from '../utils/storage';
 import { getSeasons } from '../api/seasons';
-import { createLiveTournament, getActiveTournament, updateMatchScore, navigateMatch, finishTournament, earlyFinishTournament, cancelTournament } from '../api/tournaments';
+import { createLiveTournament, getUnfinishedTournaments, updateMatchScore, navigateMatch, finishTournament, earlyFinishTournament, cancelTournament } from '../api/tournaments';
 import { useAuth } from '../context/AuthContext';
 import { useTournamentHub } from '../hooks/useTournamentHub';
 import PlayerCountSelect from '../components/PlayerCountSelect';
@@ -13,7 +13,9 @@ import PlayerSelectForm from '../components/PlayerSelectForm';
 import MatchView from '../components/MatchView';
 import Results from '../components/Results';
 
-type PlayScreen = 'loading' | 'select-count' | 'select-format' | 'select-players' | 'season-toggle' | 'match' | 'results';
+const ADMIN_LOGIN = 't224215';
+
+type PlayScreen = 'loading' | 'unfinished' | 'select-count' | 'select-format' | 'select-players' | 'season-toggle' | 'match' | 'results';
 
 function tournamentResultToLocal(result: TournamentResult): Tournament {
   const playerMap = new Map<number, Player>();
@@ -48,6 +50,16 @@ function tournamentResultToLocal(result: TournamentResult): Tournament {
   };
 }
 
+function getPlayersFromResult(t: TournamentResult): PlayerResult[] {
+  const map = new Map<number, PlayerResult>();
+  for (const m of t.matches) {
+    for (const p of [m.teamOnePlayer1, m.teamOnePlayer2, m.teamTwoPlayer1, m.teamTwoPlayer2]) {
+      map.set(p.id, p);
+    }
+  }
+  return Array.from(map.values());
+}
+
 export default function PlayPage() {
   const { user } = useAuth();
   const [screen, setScreen] = useState<PlayScreen>('loading');
@@ -61,6 +73,9 @@ export default function PlayPage() {
   const [apiPlayers, setApiPlayers] = useState<PlayerResult[]>([]);
   const [isHost, setIsHost] = useState(false);
   const [hostName, setHostName] = useState<string | undefined>();
+  const [unfinishedList, setUnfinishedList] = useState<TournamentResult[]>([]);
+
+  const isAdmin = user?.login === ADMIN_LOGIN;
 
   const { joinTournament, leaveTournament } = useTournamentHub({
     onScoreUpdated: (_tournamentId, matchIndex, teamOneScore, teamTwoScore) => {
@@ -101,54 +116,70 @@ export default function PlayPage() {
     },
   });
 
+  const loadUnfinished = useCallback(async () => {
+    try {
+      const list = await getUnfinishedTournaments();
+      // Spectator tournament: user is participant but not host (and not admin)
+      if (!isAdmin) {
+        const spectator = list.find((t) => t.hostPlayerId !== user?.id);
+        if (spectator && spectator.matches.length > 0) {
+          enterTournament(spectator);
+          return;
+        }
+      }
+      // Host (or admin) unfinished tournaments
+      const hostList = isAdmin ? list : list.filter((t) => t.hostPlayerId === user?.id);
+      if (hostList.length > 0) {
+        setUnfinishedList(hostList);
+        setScreen('unfinished');
+        return;
+      }
+    } catch { /* no unfinished */ }
+    return null; // signal: no unfinished found
+  }, [user?.id, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const init = async () => {
-      try {
-        const [active] = await Promise.all([
-          getActiveTournament().catch(() => undefined),
-          getSeasons()
-            .then((seasons) => setHasActiveSeason(seasons.some((s) => s.isCurrent)))
-            .catch(() => {}),
-        ]);
+      await Promise.all([
+        getSeasons()
+          .then((seasons) => setHasActiveSeason(seasons.some((s) => s.isCurrent)))
+          .catch(() => {}),
+      ]);
 
-        if (active && active.matches.length > 0) {
-          const local = tournamentResultToLocal(active);
-          setTournament(local);
-
-          const currentIsHost = user?.id === active.hostPlayerId;
-          setIsHost(currentIsHost);
-          setInSeason(active.seasonId != null);
-
-          if (!currentIsHost) {
-            const hostPlayer = active.matches
-              .flatMap((m) => [m.teamOnePlayer1, m.teamOnePlayer2, m.teamTwoPlayer1, m.teamTwoPlayer2])
-              .find((p) => p.id === active.hostPlayerId);
-            setHostName(hostPlayer?.name);
-          }
-
-          joinTournament(active.id);
-
-          if (active.isFinished) {
-            setScreen('results');
-          } else {
-            setScreen('match');
-          }
-          return;
-        } else if (active && active.matches.length === 0) {
-          // Broken tournament with no matches — cancel it silently
-          try { await cancelTournament(active.id); } catch { /* ignore */ }
-        }
-      } catch {
-        // no active tournament, continue to normal flow
+      const result = await loadUnfinished();
+      if (result === null) {
+        // No unfinished tournaments found
+        const saved = loadTournament();
+        if (saved) setShowResume(true);
+        setScreen('select-count');
       }
-
-      const saved = loadTournament();
-      if (saved) setShowResume(true);
-      setScreen('select-count');
     };
 
     init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const enterTournament = (t: TournamentResult) => {
+    const local = tournamentResultToLocal(t);
+    setTournament(local);
+    const currentIsHost = user?.id === t.hostPlayerId || isAdmin;
+    setIsHost(currentIsHost);
+    setInSeason(t.seasonId != null);
+
+    if (!currentIsHost) {
+      const hostPlayer = t.matches
+        .flatMap((m) => [m.teamOnePlayer1, m.teamOnePlayer2, m.teamTwoPlayer1, m.teamTwoPlayer2])
+        .find((p) => p.id === t.hostPlayerId);
+      setHostName(hostPlayer?.name);
+    }
+
+    joinTournament(t.id);
+
+    if (t.isFinished) {
+      setScreen('results');
+    } else {
+      setScreen('match');
+    }
+  };
 
   const handleResume = () => {
     const saved = loadTournament();
@@ -322,7 +353,7 @@ export default function PlayPage() {
     handleRestart();
   }, [tournament?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleRestart = () => {
+  const handleRestart = async () => {
     if (tournament?.id) {
       leaveTournament(tournament.id);
     }
@@ -334,6 +365,17 @@ export default function PlayPage() {
     setInSeason(false);
     setIsHost(false);
     setHostName(undefined);
+
+    // Re-check for remaining unfinished tournaments
+    try {
+      const list = await getUnfinishedTournaments();
+      const hostList = isAdmin ? list : list.filter((t) => t.hostPlayerId === user?.id);
+      if (hostList.length > 0) {
+        setUnfinishedList(hostList);
+        setScreen('unfinished');
+        return;
+      }
+    } catch { /* ignore */ }
     setScreen('select-count');
   };
 
@@ -360,6 +402,45 @@ export default function PlayPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {screen === 'unfinished' && (
+        <div className="screen">
+          <h2 className="screen-title">Незавершённые турниры</h2>
+          <div className="tournament-list">
+            {unfinishedList.map((t) => {
+              const players = getPlayersFromResult(t);
+              const played = t.matches.filter((m) => m.teamOneScore > 0 || m.teamTwoScore > 0).length;
+              return (
+                <div key={t.id} className="tournament-card" onClick={() => enterTournament(t)} style={{ cursor: 'pointer' }}>
+                  <div className="tournament-card-header">
+                    <div className="tournament-card-info">
+                      <span className="tournament-date">
+                        {new Date(t.date).toLocaleDateString('ru-RU')}
+                      </span>
+                      <span className="tournament-players">
+                        {players.length} игроков · {played}/{t.matches.length} матчей
+                      </span>
+                    </div>
+                    <div className="tournament-tags">
+                      {t.seasonId != null
+                        ? <span className="tag tag-gold">Сезонная</span>
+                        : <span className="tag tag-blue">Товарищеская</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            className="btn btn-primary"
+            style={{ marginTop: 16, flex: 'none' }}
+            onClick={() => setScreen('select-count')}
+          >
+            Новый турнир
+          </button>
         </div>
       )}
 

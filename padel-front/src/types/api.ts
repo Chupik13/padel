@@ -62,6 +62,7 @@ export interface TournamentResult {
   currentMatchIndex: number;
   hostPlayerId: number | null;
   isFinished: boolean;
+  isCancelled: boolean;
 }
 
 export interface SuperGameResult {

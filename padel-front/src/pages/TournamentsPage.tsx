@@ -117,9 +117,12 @@ export default function TournamentsPage() {
                     </span>
                   </div>
                   <div className="tournament-tags">
-                    {t.isFinished
-                      ? <span className="tag tag-green">Завершён</span>
-                      : <span className="tag tag-red">Не завершён</span>
+                    <span className="tag tag-muted">{t.matches.length} матчей</span>
+                    {t.isCancelled
+                      ? <span className="tag tag-red">Отменена</span>
+                      : t.isFinished
+                        ? <span className="tag tag-green">Завершён</span>
+                        : <span className="tag tag-red">Не завершён</span>
                     }
                     {t.seasonId != null
                       ? <span className="tag tag-gold">Сезонная</span>

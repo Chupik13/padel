@@ -11,4 +11,5 @@ public class TournamentResult
     public int CurrentMatchIndex { get; set; }
     public int? HostPlayerId { get; set; }
     public bool IsFinished { get; set; }
+    public bool IsCancelled { get; set; }
 }

@@ -184,7 +184,7 @@ function SeasonStats({ stats }: { stats: import('../types/api').SeasonStatisticR
         <span className="stat-label">Турниров</span>
       </div>
       <div className="stat-item">
-        <span className="stat-value">#{stats.ratingPlace}</span>
+        <span className="stat-value">{stats.tournamentsPlayed > 0 ? `#${stats.ratingPlace}` : '—'}</span>
         <span className="stat-label">Место</span>
       </div>
     </div>
