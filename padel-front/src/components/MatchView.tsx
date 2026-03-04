@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Tournament, Player, Match } from '../types';
 
 interface Props {
@@ -58,6 +59,7 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
   const match = matches.length > 0 ? matches[safeIndex] : undefined;
   const isLast = safeIndex === matches.length - 1;
   const isFirst = safeIndex === 0;
+  const { t } = useTranslation();
 
   const [score1, setScore1] = useState(match?.score1?.toString() ?? '');
   const [score2, setScore2] = useState(match?.score2?.toString() ?? '');
@@ -71,10 +73,10 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
   if (!match) {
     return (
       <div className="screen center-content">
-        <p className="subtitle">Нет матчей для отображения</p>
+        <p className="subtitle">{t('match.noMatches')}</p>
         {onCancel && (
           <button className="btn btn-danger" style={{ maxWidth: 360, width: '100%', flex: 'none' }} onClick={onCancel}>
-            Отменить турнир
+            {t('match.cancelTournament')}
           </button>
         )}
       </div>
@@ -109,19 +111,19 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
     <div className="screen">
       {readOnly && (
         <div className="spectator-badge">
-          Вы наблюдатель{hostName && <span className="host-badge"> &middot; Хост: {hostName}</span>}
+          {t('match.spectator')}{hostName && <span className="host-badge"> &middot; {t('match.host', { name: hostName })}</span>}
         </div>
       )}
       {showEarlyFinishModal && (
         <div className="modal-overlay">
           <div className="modal">
-            <p>Все неотыгранные матчи получат счёт 8:8. Завершить?</p>
+            <p>{t('match.earlyFinishConfirm')}</p>
             <div className="button-row">
               <button className="btn btn-secondary" onClick={() => setShowEarlyFinishModal(false)}>
-                Отмена
+                {t('common.cancel')}
               </button>
               <button className="btn btn-danger" onClick={() => { setShowEarlyFinishModal(false); onEarlyFinish?.(); }}>
-                Завершить
+                {t('match.finishBtn')}
               </button>
             </div>
           </div>
@@ -130,16 +132,16 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
       <div className="match-header">
         {!readOnly && onEarlyFinish && (
           <button className="cancel-tournament-link early-finish-link" onClick={() => setShowEarlyFinishModal(true)}>
-            Завершить досрочно
+            {t('match.earlyFinish')}
           </button>
         )}
         {!readOnly && onCancel && (
           <button className="cancel-tournament-link" onClick={onCancel}>
-            Отменить
+            {t('match.cancel')}
           </button>
         )}
         <span className="match-counter">
-          Матч {safeIndex + 1} из {matches.length}
+          {t('match.counter', { current: safeIndex + 1, total: matches.length })}
         </span>
       </div>
       <div className="progress-bar">
@@ -148,7 +150,7 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
 
       <div className="match-teams">
         <div className="team-card">
-          <div className="team-label">Команда 1</div>
+          <div className="team-label">{t('match.team1')}</div>
           <div className="team-players">
             {match.team1.map((id) => {
               const p = getPlayer(players, id);
@@ -181,7 +183,7 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
         <div className="vs">VS</div>
 
         <div className="team-card">
-          <div className="team-label">Команда 2</div>
+          <div className="team-label">{t('match.team2')}</div>
           <div className="team-players team-players-right">
             {match.team2.map((id) => {
               const p = getPlayer(players, id);
@@ -214,16 +216,16 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
 
       {match.resting.length > 0 && (
         <div className="resting">
-          Отдыхают: {match.resting.map((id) => getPlayer(players, id)?.name ?? `#${id}`).join(', ')}
+          {t('match.resting', { names: match.resting.map((id) => getPlayer(players, id)?.name ?? `#${id}`).join(', ') })}
         </div>
       )}
 
       <details className="spoiler">
-        <summary className="spoiler-summary">Промежуточные результаты</summary>
+        <summary className="spoiler-summary">{t('match.standings')}</summary>
         <div className="spoiler-content">
           <table className="results-table">
             <thead>
-              <tr><th>#</th><th>Имя</th><th>Очки</th><th>М</th><th>П</th><th>Пр</th></tr>
+              <tr><th>#</th><th>{t('table.name')}</th><th>{t('table.points')}</th><th>{t('table.matches')}</th><th>{t('table.wins')}</th><th>{t('table.losses')}</th></tr>
             </thead>
             <tbody>
               {computeStandings(players, matches, safeIndex).map((st, i) => (
@@ -242,11 +244,11 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
       </details>
 
       <details className="spoiler">
-        <summary className="spoiler-summary">Таблица игр</summary>
+        <summary className="spoiler-summary">{t('match.matchTable')}</summary>
         <div className="spoiler-content">
           <table className="results-table">
             <thead>
-              <tr><th style={{ width: '1.5em' }}>#</th><th style={{ width: '45%', textAlign: 'right' }}>Команда 1</th><th style={{ width: 'auto', textAlign: 'center' }}></th><th style={{ width: '45%' }}>Команда 2</th></tr>
+              <tr><th style={{ width: '1.5em' }}>#</th><th style={{ width: '45%', textAlign: 'right' }}>{t('match.team1')}</th><th style={{ width: 'auto', textAlign: 'center' }}></th><th style={{ width: '45%' }}>{t('match.team2')}</th></tr>
             </thead>
             <tbody>
               {matches.map((m, i) => (
@@ -267,10 +269,10 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
       {!readOnly && (
         <div className="button-row">
           <button className="btn btn-secondary" onClick={handlePrev} disabled={isFirst}>
-            Назад
+            {t('common.back')}
           </button>
           <button className="btn btn-primary" onClick={handleNext}>
-            {isLast ? 'Завершить турнир' : 'Далее'}
+            {isLast ? t('match.finish') : t('match.next')}
           </button>
         </div>
       )}

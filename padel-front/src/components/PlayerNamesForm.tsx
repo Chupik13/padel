@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   count: number;
@@ -9,6 +10,7 @@ interface Props {
 export default function PlayerNamesForm({ count, onSubmit, onBack }: Props) {
   const [names, setNames] = useState<string[]>(Array(count).fill(''));
   const [error, setError] = useState('');
+  const { t } = useTranslation();
 
   const handleChange = (index: number, value: string) => {
     const updated = [...names];
@@ -20,11 +22,11 @@ export default function PlayerNamesForm({ count, onSubmit, onBack }: Props) {
   const handleSubmit = () => {
     const trimmed = names.map((n) => n.trim());
     if (trimmed.some((n) => !n)) {
-      setError('Заполните все имена');
+      setError(t('playerNames.fillAll'));
       return;
     }
     if (new Set(trimmed).size !== trimmed.length) {
-      setError('Имена должны быть уникальными');
+      setError(t('playerNames.uniqueNames'));
       return;
     }
     onSubmit(trimmed);
@@ -32,14 +34,14 @@ export default function PlayerNamesForm({ count, onSubmit, onBack }: Props) {
 
   return (
     <div className="screen">
-      <h2 className="screen-title">Имена игроков</h2>
+      <h2 className="screen-title">{t('playerNames.title')}</h2>
       <div className="form-fields">
         {names.map((name, i) => (
           <input
             key={i}
             className="input"
             type="text"
-            placeholder={`Игрок ${i + 1}`}
+            placeholder={t('playerNames.placeholder', { number: i + 1 })}
             value={name}
             onChange={(e) => handleChange(i, e.target.value)}
             autoFocus={i === 0}
@@ -49,10 +51,10 @@ export default function PlayerNamesForm({ count, onSubmit, onBack }: Props) {
       {error && <p className="error">{error}</p>}
       <div className="button-row">
         <button className="btn btn-secondary" onClick={onBack}>
-          Назад
+          {t('common.back')}
         </button>
         <button className="btn btn-primary" onClick={handleSubmit}>
-          Сформировать турнир
+          {t('playerNames.submit')}
         </button>
       </div>
     </div>

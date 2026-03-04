@@ -12,12 +12,17 @@ public class PadelDbContext(DbContextOptions<PadelDbContext> options) : DbContex
     public DbSet<PlayerTeam> PlayerTeams => Set<PlayerTeam>();
     public DbSet<TeamMatch> TeamMatches => Set<TeamMatch>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<Club> Clubs => Set<Club>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Player>(entity =>
         {
             entity.HasIndex(p => p.Login).IsUnique();
+            entity.HasOne(p => p.Club)
+                .WithMany(c => c.Players)
+                .HasForeignKey(p => p.ClubId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<User>(entity =>
@@ -62,6 +67,10 @@ public class PadelDbContext(DbContextOptions<PadelDbContext> options) : DbContex
             entity.HasOne(t => t.Season)
                 .WithMany(s => s.Tournaments)
                 .HasForeignKey(t => t.SeasonId);
+            entity.HasOne(t => t.Club)
+                .WithMany(c => c.Tournaments)
+                .HasForeignKey(t => t.ClubId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Season>(entity =>

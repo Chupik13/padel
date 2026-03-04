@@ -10,6 +10,14 @@ export interface UserResult {
 export interface ProfileMiniResult {
   name: string;
   seasonScore: number;
+  clubId: number | null;
+  clubName: string | null;
+}
+
+export interface ClubResult {
+  id: number;
+  name: string;
+  memberCount: number;
 }
 
 export interface ProfileResult {
@@ -22,6 +30,7 @@ export interface ProfileResult {
 }
 
 export interface SeasonStatisticResult {
+  seasonId: number;
   score: number;
   mediumScoreAllTournaments: number;
   tournamentsPlayed: number;
@@ -88,9 +97,30 @@ export interface LeaderBoardResult {
   players: PlayerSeasonScoreResult[];
 }
 
+export interface TournamentScoreEntry {
+  date: string;
+  averageScore: number;
+  isCounted: boolean;
+}
+
 export interface PlayerSeasonScoreResult extends PlayerScoreResult {
   mediumScoreByTournaments: number;
   tournamentsPlayed: number;
+  tournamentScores: TournamentScoreEntry[];
+}
+
+export interface HeadToHeadResult {
+  player1: PlayerResult;
+  player2: PlayerResult;
+  matchesAsOpponents: number;
+  player1Wins: number;
+  player2Wins: number;
+  draws: number;
+  matchesAsPartners: number;
+  winsAsPartners: number;
+  winRateAsPartners: number;
+  player1AvgScore: number;
+  player2AvgScore: number;
 }
 
 export interface GlobalPlayerStats {

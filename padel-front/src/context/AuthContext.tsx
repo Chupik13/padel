@@ -7,6 +7,7 @@ import { getMiniProfile } from '../api/profile';
 interface AuthContextType {
   user: UserResult | null;
   miniProfile: ProfileMiniResult | null;
+  hasClub: boolean;
   loading: boolean;
   login: (loginStr: string, password: string) => Promise<void>;
   register: (loginStr: string, password: string, name: string) => Promise<void>;
@@ -60,8 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMiniProfile(null);
   };
 
+  const hasClub = miniProfile?.clubId != null;
+
   return (
-    <AuthContext.Provider value={{ user, miniProfile, loading, login, register, logout, refreshMiniProfile }}>
+    <AuthContext.Provider value={{ user, miniProfile, hasClub, loading, login, register, logout, refreshMiniProfile }}>
       {children}
     </AuthContext.Provider>
   );

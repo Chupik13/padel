@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.SignalR;
 using padel.Dtos.Requests;
 using padel.Hubs;
+using padel.Models;
 using padel.Services;
 
 namespace padel.Endpoints;
@@ -17,32 +18,36 @@ public static class TournamentEndpoints
     {
         var group = app.MapGroup("/api/tournaments").RequireAuthorization();
 
-        group.MapGet("/", async (int? seasonId, int? playerId, bool? isBalanced, bool? inSeason, TournamentService tournamentService) =>
+        group.MapGet("/", async (int? seasonId, int? playerId, bool? isBalanced, bool? inSeason, TournamentService tournamentService, HttpContext httpContext, PadelDbContext db) =>
         {
+            var clubId = await EndpointHelpers.GetPlayerClubId(httpContext, db);
             var request = new GetTournamentsRequest
             {
                 SeasonId = seasonId,
                 PlayerId = playerId,
                 IsBalanced = isBalanced,
-                InSeason = inSeason
+                InSeason = inSeason,
+                ClubId = clubId
             };
             var result = await tournamentService.GetTournaments(request);
             return Results.Ok(result);
         });
 
-        group.MapPost("/", async (SaveTournamentRequest request, TournamentService tournamentService) =>
+        group.MapPost("/", async (SaveTournamentRequest request, TournamentService tournamentService, HttpContext httpContext, PadelDbContext db) =>
         {
-            var result = await tournamentService.SaveTournament(request);
+            var clubId = await EndpointHelpers.GetPlayerClubId(httpContext, db);
+            var result = await tournamentService.SaveTournament(request, clubId);
             return Results.Created($"/api/tournaments/{result.Id}", result);
         });
 
-        group.MapPost("/live", async (CreateLiveTournamentRequest request, TournamentService tournamentService, HttpContext httpContext) =>
+        group.MapPost("/live", async (CreateLiveTournamentRequest request, TournamentService tournamentService, HttpContext httpContext, PadelDbContext db) =>
         {
             var playerIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
                 return Results.Unauthorized();
 
-            var result = await tournamentService.CreateLiveTournament(playerId, request);
+            var clubId = await EndpointHelpers.GetPlayerClubId(httpContext, db);
+            var result = await tournamentService.CreateLiveTournament(playerId, request, clubId);
             return Results.Created($"/api/tournaments/{result.Id}", result);
         });
 
@@ -56,13 +61,14 @@ public static class TournamentEndpoints
             return result is null ? Results.NoContent() : Results.Ok(result);
         });
 
-        group.MapGet("/unfinished", async (TournamentService tournamentService, HttpContext httpContext) =>
+        group.MapGet("/unfinished", async (TournamentService tournamentService, HttpContext httpContext, PadelDbContext db) =>
         {
             var playerIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
                 return Results.Unauthorized();
 
-            var result = await tournamentService.GetUnfinishedTournaments(playerId, IsAdmin(httpContext));
+            var clubId = await EndpointHelpers.GetPlayerClubId(httpContext, db);
+            var result = await tournamentService.GetUnfinishedTournaments(playerId, IsAdmin(httpContext), clubId);
             return Results.Ok(result);
         });
 

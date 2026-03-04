@@ -7,7 +7,7 @@ namespace padel.Services;
 
 public class SeasonService(PadelDbContext db, TournamentService tournamentService)
 {
-    public async Task<List<SeasonResult>> GetSeasons()
+    public async Task<List<SeasonResult>> GetSeasons(int? clubId = null)
     {
         var seasons = await db.Seasons
             .Include(s => s.Tournaments)
@@ -26,10 +26,10 @@ public class SeasonService(PadelDbContext db, TournamentService tournamentServic
             .ToListAsync();
 
         var now = DateTime.UtcNow;
-        return seasons.Select(s => MapSeason(s, now)).ToList();
+        return seasons.Select(s => MapSeason(s, now, clubId)).ToList();
     }
 
-    public async Task<SeasonResult?> GetSeason(int id)
+    public async Task<SeasonResult?> GetSeason(int id, int? clubId = null)
     {
         var season = await db.Seasons
             .Include(s => s.Tournaments)
@@ -48,10 +48,10 @@ public class SeasonService(PadelDbContext db, TournamentService tournamentServic
 
         if (season is null) return null;
 
-        return MapSeason(season, DateTime.UtcNow);
+        return MapSeason(season, DateTime.UtcNow, clubId);
     }
 
-    public async Task<TournamentResult?> CreateSuperGame(int seasonId, int hostPlayerId, CreateSuperGameRequest request)
+    public async Task<TournamentResult?> CreateSuperGame(int seasonId, int hostPlayerId, CreateSuperGameRequest request, int? clubId = null)
     {
         var season = await db.Seasons
             .Include(s => s.Tournaments)
@@ -67,7 +67,7 @@ public class SeasonService(PadelDbContext db, TournamentService tournamentServic
         if (season.SuperGameTournamentId is not null) return null;
         if (request.Matches.Count != 9) return null;
 
-        var leaderBoard = BuildLeaderBoard(season);
+        var leaderBoard = BuildLeaderBoard(season, clubId);
         var top4Ids = leaderBoard.Players.Take(4).Select(p => p.Player.Id).ToList();
         if (!top4Ids.Contains(hostPlayerId)) return null;
 
@@ -76,7 +76,7 @@ public class SeasonService(PadelDbContext db, TournamentService tournamentServic
             IsBalanced = true,
             InSeason = false,
             Matches = request.Matches
-        });
+        }, clubId);
 
         season.SuperGameTournamentId = result.Id;
         await db.SaveChangesAsync();
@@ -84,10 +84,10 @@ public class SeasonService(PadelDbContext db, TournamentService tournamentServic
         return result;
     }
 
-    private static SeasonResult MapSeason(Season season, DateTime now)
+    private static SeasonResult MapSeason(Season season, DateTime now, int? clubId = null)
     {
         var isCurrent = season.SeasonStart <= now && season.SeasonEnd > now;
-        var leaderBoard = BuildLeaderBoard(season);
+        var leaderBoard = BuildLeaderBoard(season, clubId);
 
         SuperGameResult? superGame = null;
         if (season.SuperGameTournament is not null)
@@ -132,24 +132,32 @@ public class SeasonService(PadelDbContext db, TournamentService tournamentServic
             };
         }
 
+        var clubTournaments = clubId.HasValue
+            ? season.Tournaments.Where(t => !t.IsCancelled && t.ClubId == clubId.Value)
+            : season.Tournaments.Where(t => !t.IsCancelled);
+
         return new SeasonResult
         {
             Id = season.Id,
             SeasonStart = season.SeasonStart,
             SeasonEnd = season.SeasonEnd,
             RequireGamesCount = season.RequireGamesCount,
-            TournamentsPlayed = season.Tournaments.Count(t => !t.IsCancelled),
+            TournamentsPlayed = clubTournaments.Count(),
             IsCurrent = isCurrent,
             LeaderBoard = leaderBoard,
             SuperGame = superGame
         };
     }
 
-    private static LeaderBoardResult BuildLeaderBoard(Season season)
+    private static LeaderBoardResult BuildLeaderBoard(Season season, int? clubId = null)
     {
-        var playerScores = new Dictionary<int, (Player Player, double TotalSeasonScore, int TournamentCount)>();
+        var playerTournamentAvgs = new Dictionary<int, (Player Player, List<(double Average, DateTime Date)> Entries)>();
 
-        foreach (var tournament in season.Tournaments.Where(t => !t.IsCancelled))
+        var tournaments = clubId.HasValue
+            ? season.Tournaments.Where(t => !t.IsCancelled && t.ClubId == clubId.Value)
+            : season.Tournaments.Where(t => !t.IsCancelled);
+
+        foreach (var tournament in tournaments)
         {
             var tournamentPlayerScores = new Dictionary<int, (Player Player, double TotalScore, int MatchCount)>();
 
@@ -171,23 +179,43 @@ public class SeasonService(PadelDbContext db, TournamentService tournamentServic
             foreach (var (playerId, (player, totalScore, matchCount)) in tournamentPlayerScores)
             {
                 var tournamentAvg = matchCount > 0 ? totalScore / matchCount : 0;
-                if (!playerScores.ContainsKey(playerId))
-                    playerScores[playerId] = (player, 0, 0);
+                if (!playerTournamentAvgs.ContainsKey(playerId))
+                    playerTournamentAvgs[playerId] = (player, new List<(double, DateTime)>());
 
-                var current = playerScores[playerId];
-                playerScores[playerId] = (current.Player, current.TotalSeasonScore + tournamentAvg, current.TournamentCount + 1);
+                playerTournamentAvgs[playerId].Entries.Add((tournamentAvg, tournament.Date));
             }
         }
 
-        var players = playerScores.Values
-            .Select(ps => new PlayerSeasonScoreResult
+        var maxGames = season.RequireGamesCount;
+
+        var players = playerTournamentAvgs.Values
+            .Select(ps =>
             {
-                Player = TournamentMapper.MapPlayer(ps.Player),
-                Score = Math.Round(ps.TotalSeasonScore, 2),
-                MediumScoreByTournaments = ps.TournamentCount > 0
-                    ? Math.Round(ps.TotalSeasonScore / ps.TournamentCount, 2)
-                    : 0,
-                TournamentsPlayed = ps.TournamentCount
+                var sorted = ps.Entries.OrderByDescending(e => e.Average).ToList();
+                var bestAverages = sorted.Take(maxGames).ToList();
+                var score = bestAverages.Sum(e => e.Average);
+                var countedSet = new HashSet<(double, DateTime)>(bestAverages);
+
+                var tournamentScores = ps.Entries
+                    .OrderBy(e => e.Date)
+                    .Select(e => new TournamentScoreEntry
+                    {
+                        Date = e.Date,
+                        AverageScore = Math.Round(e.Average, 2),
+                        IsCounted = countedSet.Contains(e)
+                    })
+                    .ToList();
+
+                return new PlayerSeasonScoreResult
+                {
+                    Player = TournamentMapper.MapPlayer(ps.Player),
+                    Score = Math.Round(score, 2),
+                    MediumScoreByTournaments = bestAverages.Count > 0
+                        ? Math.Round(score / bestAverages.Count, 2)
+                        : 0,
+                    TournamentsPlayed = ps.Entries.Count,
+                    TournamentScores = tournamentScores
+                };
             })
             .OrderByDescending(p => p.Score)
             .ToList();

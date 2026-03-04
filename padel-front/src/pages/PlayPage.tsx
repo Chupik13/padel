@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Tournament, TournamentFormat, FormatOption, Player, Match } from '../types';
 import type { PlayerResult, TournamentResult } from '../types/api';
 import { generateSchedule, generateFixedSchedule } from '../utils/scheduler';
@@ -12,6 +13,7 @@ import FormatSelect from '../components/FormatSelect';
 import PlayerSelectForm from '../components/PlayerSelectForm';
 import MatchView from '../components/MatchView';
 import Results from '../components/Results';
+import InfoTip from '../components/InfoTip';
 
 const ADMIN_LOGIN = 't224215';
 
@@ -62,6 +64,7 @@ function getPlayersFromResult(t: TournamentResult): PlayerResult[] {
 
 export default function PlayPage() {
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const [screen, setScreen] = useState<PlayScreen>('loading');
   const [playerCount, setPlayerCount] = useState(4);
   const [format, setFormat] = useState<TournamentFormat>('balanced');
@@ -235,7 +238,7 @@ export default function PlayPage() {
         })),
       });
 
-      const t: Tournament = {
+      const tr: Tournament = {
         players: localPlayers,
         matches,
         currentMatchIndex: 0,
@@ -244,16 +247,16 @@ export default function PlayPage() {
         hostPlayerId: result.hostPlayerId ?? undefined,
         isFinished: false,
       };
-      setTournament(t);
+      setTournament(tr);
       setIsHost(true);
       setInSeason(seasonal);
       joinTournament(result.id);
       setScreen('match');
     } catch {
       // Fallback to local-only mode
-      const t: Tournament = { players: localPlayers, matches, currentMatchIndex: 0, format };
-      setTournament(t);
-      saveLocal(t);
+      const tr: Tournament = { players: localPlayers, matches, currentMatchIndex: 0, format };
+      setTournament(tr);
+      saveLocal(tr);
       setInSeason(seasonal);
       setScreen('match');
     }
@@ -353,6 +356,15 @@ export default function PlayPage() {
     handleRestart();
   }, [tournament?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handleRematch = useCallback(async () => {
+    if (tournament?.id) {
+      leaveTournament(tournament.id);
+    }
+    clearTournament();
+    setTournament(null);
+    await startTournament(apiPlayers, inSeason);
+  }, [tournament?.id, apiPlayers, inSeason, formatOption, format]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleRestart = async () => {
     if (tournament?.id) {
       leaveTournament(tournament.id);
@@ -379,6 +391,8 @@ export default function PlayPage() {
     setScreen('select-count');
   };
 
+  const dateFmt = i18n.language === 'ru' ? 'ru-RU' : 'en-US';
+
   if (screen === 'loading') {
     return (
       <div className="screen center-content">
@@ -392,13 +406,13 @@ export default function PlayPage() {
       {showResume && (
         <div className="modal-overlay">
           <div className="modal">
-            <p>Найден незавершённый турнир. Продолжить?</p>
+            <p>{t('play.resumePrompt')}</p>
             <div className="button-row">
               <button className="btn btn-secondary" onClick={handleDismissResume}>
-                Нет, начать заново
+                {t('play.resumeNo')}
               </button>
               <button className="btn btn-primary" onClick={handleResume}>
-                Продолжить
+                {t('play.resumeYes')}
               </button>
             </div>
           </div>
@@ -407,26 +421,29 @@ export default function PlayPage() {
 
       {screen === 'unfinished' && (
         <div className="screen">
-          <h2 className="screen-title">Незавершённые турниры</h2>
+          <div className="title-row">
+            <h2 className="screen-title">{t('play.unfinished')}</h2>
+            <InfoTip text={t('play.unfinished_hint')} />
+          </div>
           <div className="tournament-list">
-            {unfinishedList.map((t) => {
-              const players = getPlayersFromResult(t);
-              const played = t.matches.filter((m) => m.teamOneScore > 0 || m.teamTwoScore > 0).length;
+            {unfinishedList.map((tr) => {
+              const players = getPlayersFromResult(tr);
+              const played = tr.matches.filter((m) => m.teamOneScore > 0 || m.teamTwoScore > 0).length;
               return (
-                <div key={t.id} className="tournament-card" onClick={() => enterTournament(t)} style={{ cursor: 'pointer' }}>
+                <div key={tr.id} className="tournament-card" onClick={() => enterTournament(tr)} style={{ cursor: 'pointer' }}>
                   <div className="tournament-card-header">
                     <div className="tournament-card-info">
                       <span className="tournament-date">
-                        {new Date(t.date).toLocaleDateString('ru-RU')}
+                        {new Date(tr.date).toLocaleDateString(dateFmt)}
                       </span>
                       <span className="tournament-players">
-                        {players.length} игроков · {played}/{t.matches.length} матчей
+                        {players.length} {t('play.players')} · {played}/{tr.matches.length} {t('play.matches')}
                       </span>
                     </div>
                     <div className="tournament-tags">
-                      {t.seasonId != null
-                        ? <span className="tag tag-gold">Сезонная</span>
-                        : <span className="tag tag-blue">Товарищеская</span>
+                      {tr.seasonId != null
+                        ? <span className="tag tag-gold">{t('play.seasonal')}</span>
+                        : <span className="tag tag-blue">{t('play.friendly')}</span>
                       }
                     </div>
                   </div>
@@ -439,7 +456,7 @@ export default function PlayPage() {
             style={{ marginTop: 16, flex: 'none' }}
             onClick={() => setScreen('select-count')}
           >
-            Новый турнир
+            {t('play.newTournament')}
           </button>
         </div>
       )}
@@ -464,25 +481,28 @@ export default function PlayPage() {
 
       {screen === 'season-toggle' && (
         <div className="screen center-content">
-          <h2 className="screen-title">Тип игры</h2>
+          <div className="title-row">
+            <h2 className="screen-title">{t('play.gameType')}</h2>
+            <InfoTip text={t('play.gameType_hint')} />
+          </div>
           <div className="season-toggle-options">
             <button
               className="format-button"
               onClick={() => startTournament(apiPlayers, true)}
             >
-              <span className="format-button-title">Сезонная</span>
-              <span className="format-button-desc">Результаты идут в зачёт сезона</span>
+              <span className="format-button-title">{t('play.seasonal')}</span>
+              <span className="format-button-desc">{t('play.seasonalDesc')}</span>
             </button>
             <button
               className="format-button"
               onClick={() => startTournament(apiPlayers, false)}
             >
-              <span className="format-button-title">Товарищеская</span>
-              <span className="format-button-desc">Игра без учёта в сезоне</span>
+              <span className="format-button-title">{t('play.friendly')}</span>
+              <span className="format-button-desc">{t('play.friendlyDesc')}</span>
             </button>
           </div>
           <button className="btn btn-secondary" style={{ maxWidth: 360, width: '100%', flex: 'none' }} onClick={() => setScreen('select-players')}>
-            Назад
+            {t('common.back')}
           </button>
         </div>
       )}
@@ -505,6 +525,7 @@ export default function PlayPage() {
         <Results
           tournament={tournament}
           onRestart={handleRestart}
+          onRematch={isHost && apiPlayers.length > 0 ? handleRematch : undefined}
           inSeason={inSeason}
           isLive={!!tournament.id}
         />

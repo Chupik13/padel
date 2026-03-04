@@ -36,6 +36,9 @@ public class TournamentService(PadelDbContext db)
         else if (request.InSeason == false)
             query = query.Where(t => t.SeasonId == null);
 
+        if (request.ClubId.HasValue)
+            query = query.Where(t => t.ClubId == request.ClubId.Value);
+
         if (request.PlayerId.HasValue)
         {
             var playerId = request.PlayerId.Value;
@@ -54,7 +57,7 @@ public class TournamentService(PadelDbContext db)
         return tournaments.Select(TournamentMapper.ToResult).ToList();
     }
 
-    public async Task<TournamentResult> SaveTournament(SaveTournamentRequest request)
+    public async Task<TournamentResult> SaveTournament(SaveTournamentRequest request, int? clubId = null)
     {
         var now = DateTime.UtcNow;
         int? seasonId = null;
@@ -69,7 +72,8 @@ public class TournamentService(PadelDbContext db)
         {
             Date = now,
             IsBalanced = request.IsBalanced,
-            SeasonId = seasonId
+            SeasonId = seasonId,
+            ClubId = clubId
         };
         db.Tournaments.Add(tournament);
         await db.SaveChangesAsync();
@@ -100,7 +104,7 @@ public class TournamentService(PadelDbContext db)
         return TournamentMapper.ToResult(saved);
     }
 
-    public async Task<TournamentResult> CreateLiveTournament(int hostPlayerId, CreateLiveTournamentRequest request)
+    public async Task<TournamentResult> CreateLiveTournament(int hostPlayerId, CreateLiveTournamentRequest request, int? clubId = null)
     {
         var now = DateTime.UtcNow;
         int? seasonId = null;
@@ -118,7 +122,8 @@ public class TournamentService(PadelDbContext db)
             SeasonId = seasonId,
             HostPlayerId = hostPlayerId,
             CurrentMatchIndex = 0,
-            IsFinished = false
+            IsFinished = false,
+            ClubId = clubId
         };
         db.Tournaments.Add(tournament);
         await db.SaveChangesAsync();
@@ -187,12 +192,15 @@ public class TournamentService(PadelDbContext db)
         return true;
     }
 
-    public async Task<List<TournamentResult>> GetUnfinishedTournaments(int playerId, bool isAdmin = false)
+    public async Task<List<TournamentResult>> GetUnfinishedTournaments(int playerId, bool isAdmin = false, int? clubId = null)
     {
         var query = FullTournamentQuery()
             .Where(t => !t.IsFinished && !t.IsCancelled && t.Matches.Any(m =>
                 m.TeamMatches.Count >= 2 &&
                 m.TeamMatches.All(tm => tm.Team.PlayerTeams.Count >= 2)));
+
+        if (clubId.HasValue)
+            query = query.Where(t => t.ClubId == clubId.Value);
 
         if (!isAdmin)
         {

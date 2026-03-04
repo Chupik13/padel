@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 
 export default function RegisterPage() {
@@ -10,20 +11,28 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const auth = useAuth();
+  const { t, i18n } = useTranslation();
+
+  const toggleLang = () => {
+    const next = i18n.language === 'ru' ? 'en' : 'ru';
+    i18n.changeLanguage(next);
+    localStorage.setItem('language', next);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!login.trim() || !name.trim() || !password) {
-      setError('Заполните все поля');
+      setError(t('register.fillAllFields'));
       return;
     }
     setLoading(true);
     setError('');
     try {
       await auth.register(login.trim(), password, name.trim());
+      localStorage.setItem('lastSeenVersion', __APP_VERSION__);
       navigate('/play', { replace: true });
     } catch {
-      setError('Пользователь с таким логином уже существует');
+      setError(t('register.loginExists'));
     } finally {
       setLoading(false);
     }
@@ -31,12 +40,15 @@ export default function RegisterPage() {
 
   return (
     <div className="auth-page">
-      <h1 className="title">Грузиано</h1>
+      <button className="lang-toggle auth-lang-toggle" onClick={toggleLang}>
+        {i18n.language === 'ru' ? 'EN' : 'RU'}
+      </button>
+      <h1 className="title">{t('app.title')}</h1>
       <form className="auth-form" onSubmit={handleSubmit}>
         <input
           className="input"
           type="text"
-          placeholder="Логин"
+          placeholder={t('register.placeholder_login')}
           value={login}
           onChange={(e) => setLogin(e.target.value)}
           autoFocus
@@ -44,24 +56,24 @@ export default function RegisterPage() {
         <input
           className="input"
           type="text"
-          placeholder="Имя"
+          placeholder={t('register.placeholder_name')}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <input
           className="input"
           type="password"
-          placeholder="Пароль"
+          placeholder={t('register.placeholder_password')}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
         {error && <p className="error">{error}</p>}
         <button className="btn btn-primary" type="submit" disabled={loading}>
-          {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+          {loading ? t('register.submitting') : t('register.submit')}
         </button>
       </form>
       <p className="auth-link">
-        Уже есть аккаунт? <Link to="/login">Войти</Link>
+        {t('register.hasAccount')} <Link to="/login">{t('register.login')}</Link>
       </p>
     </div>
   );

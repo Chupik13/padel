@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getPlayers } from '../api/players';
 import type { PlayerResult } from '../types/api';
 
@@ -13,13 +14,14 @@ export default function PlayerSelectForm({ count, onSubmit, onBack }: Props) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { t } = useTranslation();
 
   useEffect(() => {
     getPlayers()
       .then(setAllPlayers)
-      .catch(() => setError('Не удалось загрузить игроков'))
+      .catch(() => setError(t('playerSelect.loadError')))
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (id: number) => {
     setSelected((prev) => {
@@ -49,8 +51,8 @@ export default function PlayerSelectForm({ count, onSubmit, onBack }: Props) {
 
   return (
     <div className="screen">
-      <h2 className="screen-title">Выберите {count} игроков</h2>
-      <p className="subtitle">Выбрано: {selected.size} / {count}</p>
+      <h2 className="screen-title">{t('playerSelect.title', { count })}</h2>
+      <p className="subtitle">{t('playerSelect.selected', { selected: selected.size, count })}</p>
       {error && <p className="error">{error}</p>}
       <div className="player-chips">
         {allPlayers.map((player) => (
@@ -72,10 +74,10 @@ export default function PlayerSelectForm({ count, onSubmit, onBack }: Props) {
       </div>
       <div className="button-row">
         <button className="btn btn-secondary" onClick={onBack}>
-          Назад
+          {t('common.back')}
         </button>
         <button className="btn btn-primary" onClick={handleSubmit} disabled={selected.size !== count}>
-          Сформировать турнир
+          {t('playerSelect.submit')}
         </button>
       </div>
     </div>

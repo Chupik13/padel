@@ -38,6 +38,13 @@ public static class ProfileEndpoints
             return Results.Ok();
         }).DisableAntiforgery();
 
+        group.MapGet("/head-to-head/{targetLogin}", async (string targetLogin, HttpContext httpContext, ProfileService profileService) =>
+        {
+            var currentLogin = httpContext.User.FindFirstValue(ClaimTypes.Name)!;
+            var result = await profileService.GetHeadToHead(currentLogin, targetLogin);
+            return result is null ? Results.NotFound() : Results.Ok(result);
+        });
+
         group.MapGet("/{userLogin}", async (string userLogin, ProfileService profileService) =>
         {
             var result = await profileService.GetProfile(userLogin);

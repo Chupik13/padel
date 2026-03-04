@@ -2,6 +2,7 @@ namespace padel.Dtos.Results;
 
 public class SeasonStatisticResult
 {
+    public int SeasonId { get; set; }
     public double Score { get; set; }
     public double MediumScoreAllTournaments { get; set; }
     public int TournamentsPlayed { get; set; }

@@ -22,6 +22,26 @@ namespace padel.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("padel.Models.Club", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Clubs");
+                });
+
             modelBuilder.Entity("padel.Models.Match", b =>
                 {
                     b.Property<int>("Id")
@@ -51,6 +71,9 @@ namespace padel.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("ClubId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ImageUrl")
                         .HasColumnType("text");
 
@@ -63,6 +86,8 @@ namespace padel.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ClubId");
 
                     b.HasIndex("Login")
                         .IsUnique();
@@ -170,6 +195,9 @@ namespace padel.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("ClubId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("CurrentMatchIndex")
                         .HasColumnType("integer");
 
@@ -195,6 +223,8 @@ namespace padel.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ClubId");
 
                     b.HasIndex("SeasonId");
 
@@ -240,6 +270,16 @@ namespace padel.Migrations
                         .IsRequired();
 
                     b.Navigation("Tournament");
+                });
+
+            modelBuilder.Entity("padel.Models.Player", b =>
+                {
+                    b.HasOne("padel.Models.Club", "Club")
+                        .WithMany("Players")
+                        .HasForeignKey("ClubId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Club");
                 });
 
             modelBuilder.Entity("padel.Models.PlayerTeam", b =>
@@ -292,9 +332,16 @@ namespace padel.Migrations
 
             modelBuilder.Entity("padel.Models.Tournament", b =>
                 {
+                    b.HasOne("padel.Models.Club", "Club")
+                        .WithMany("Tournaments")
+                        .HasForeignKey("ClubId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("padel.Models.Season", "Season")
                         .WithMany("Tournaments")
                         .HasForeignKey("SeasonId");
+
+                    b.Navigation("Club");
 
                     b.Navigation("Season");
                 });
@@ -308,6 +355,13 @@ namespace padel.Migrations
                         .IsRequired();
 
                     b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("padel.Models.Club", b =>
+                {
+                    b.Navigation("Players");
+
+                    b.Navigation("Tournaments");
                 });
 
             modelBuilder.Entity("padel.Models.Match", b =>

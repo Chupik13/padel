@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Tournament, Player } from '../types';
 import { saveTournament as saveTournamentApi } from '../api/tournaments';
 import type { SaveTournamentRequest } from '../types/api';
@@ -6,6 +7,7 @@ import type { SaveTournamentRequest } from '../types/api';
 interface Props {
   tournament: Tournament;
   onRestart: () => void;
+  onRematch?: () => void;
   inSeason?: boolean;
   isLive?: boolean;
 }
@@ -19,11 +21,12 @@ type PlayerStats = {
   losses: number;
 };
 
-export default function Results({ tournament, onRestart, inSeason = false, isLive = false }: Props) {
+export default function Results({ tournament, onRestart, onRematch, inSeason = false, isLive = false }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const { players, matches, format } = tournament;
+  const { t } = useTranslation();
 
   const statsMap = new Map<number, PlayerStats>();
   for (const p of players) {
@@ -107,7 +110,7 @@ export default function Results({ tournament, onRestart, inSeason = false, isLiv
       await saveTournamentApi(request);
       setSaved(true);
     } catch {
-      setError('Не удалось сохранить турнир');
+      setError(t('results.saveError'));
     } finally {
       setSaving(false);
     }
@@ -115,17 +118,17 @@ export default function Results({ tournament, onRestart, inSeason = false, isLiv
 
   return (
     <div className="screen">
-      <h2 className="screen-title">Результаты турнира</h2>
+      <h2 className="screen-title">{t('results.title')}</h2>
       <div className="results-table-wrapper">
         <table className="results-table">
           <thead>
             <tr>
               <th>#</th>
-              <th>Имя</th>
-              <th>Очки</th>
-              <th>Матчей</th>
-              <th>П</th>
-              <th>Пр</th>
+              <th>{t('table.name')}</th>
+              <th>{t('table.points')}</th>
+              <th>{t('table.matchesLong')}</th>
+              <th>{t('table.wins')}</th>
+              <th>{t('table.losses')}</th>
             </tr>
           </thead>
           <tbody>
@@ -145,16 +148,23 @@ export default function Results({ tournament, onRestart, inSeason = false, isLiv
       {error && <p className="error">{error}</p>}
       <div className="button-row">
         {isLive ? (
-          <button className="btn btn-primary" onClick={onRestart} style={{ flex: 1 }}>
-            Новая игра
-          </button>
+          <>
+            {onRematch && (
+              <button className="btn btn-primary" onClick={onRematch} style={{ flex: 1 }}>
+                {t('results.rematch')}
+              </button>
+            )}
+            <button className={`btn ${onRematch ? 'btn-secondary' : 'btn-primary'}`} onClick={onRestart} style={{ flex: 1 }}>
+              {t('results.newGame')}
+            </button>
+          </>
         ) : (
           <>
             <button className="btn btn-secondary" onClick={onRestart}>
-              Начать заново
+              {t('results.restart')}
             </button>
             <button className="btn btn-primary" onClick={saved ? onRestart : handleSave} disabled={saving}>
-              {saved ? 'Готово' : saving ? 'Сохранение...' : 'Сохранить игру'}
+              {saved ? t('results.done') : saving ? t('results.saving') : t('results.save')}
             </button>
           </>
         )}

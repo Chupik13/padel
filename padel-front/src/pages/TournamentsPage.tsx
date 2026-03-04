@@ -1,22 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { TournamentResult, MatchResult, PlayerResult, GlobalPlayerStats } from '../types/api';
+import { useTranslation } from 'react-i18next';
+import type { TournamentResult, MatchResult, PlayerResult } from '../types/api';
 import { getTournaments } from '../api/tournaments';
-import { getGlobalLeaderboard } from '../api/players';
 import { useAuth } from '../context/AuthContext';
-
-type Tab = 'history' | 'leaderboard';
+import InfoTip from '../components/InfoTip';
 
 export default function TournamentsPage() {
-  const [tab, setTab] = useState<Tab>('history');
   const [tournaments, setTournaments] = useState<TournamentResult[]>([]);
-  const [leaderboard, setLeaderboard] = useState<GlobalPlayerStats[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
+  const dateFmt = i18n.language === 'ru' ? 'ru-RU' : 'en-US';
 
   useEffect(() => {
     getTournaments()
@@ -24,20 +22,9 @@ export default function TournamentsPage() {
         const sorted = [...data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setTournaments(sorted);
       })
-      .catch(() => setError('Не удалось загрузить турниры'))
+      .catch(() => setError(t('tournaments.loadError')))
       .finally(() => setLoading(false));
-  }, []);
-
-  const handleTabChange = (newTab: Tab) => {
-    setTab(newTab);
-    if (newTab === 'leaderboard' && leaderboard === null) {
-      setLeaderboardLoading(true);
-      getGlobalLeaderboard()
-        .then((data) => setLeaderboard(data.players))
-        .catch(() => setError('Не удалось загрузить рейтинг'))
-        .finally(() => setLeaderboardLoading(false));
-    }
-  };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleExpand = (id: number) => {
     setExpanded((prev) => {
@@ -48,9 +35,9 @@ export default function TournamentsPage() {
     });
   };
 
-  const getAllPlayers = (t: TournamentResult): PlayerResult[] => {
+  const getAllPlayers = (tr: TournamentResult): PlayerResult[] => {
     const map = new Map<number, PlayerResult>();
-    for (const m of t.matches) {
+    for (const m of tr.matches) {
       for (const p of [m.teamOnePlayer1, m.teamOnePlayer2, m.teamTwoPlayer1, m.teamTwoPlayer2]) {
         map.set(p.id, p);
       }
@@ -58,9 +45,9 @@ export default function TournamentsPage() {
     return Array.from(map.values());
   };
 
-  const userParticipated = (t: TournamentResult): boolean => {
+  const userParticipated = (tr: TournamentResult): boolean => {
     if (!user) return false;
-    return getAllPlayers(t).some((p) => p.name === user.name);
+    return getAllPlayers(tr).some((p) => p.name === user.name);
   };
 
   if (loading) {
@@ -71,7 +58,7 @@ export default function TournamentsPage() {
     );
   }
 
-  if (error && tab === 'history' && tournaments.length === 0) {
+  if (error && tournaments.length === 0) {
     return (
       <div className="screen center-content">
         <p className="error">{error}</p>
@@ -81,150 +68,78 @@ export default function TournamentsPage() {
 
   return (
     <div className="screen">
-      <h2 className="screen-title">Турниры</h2>
-
-      <div className="tabs">
-        <button
-          className={`tab ${tab === 'history' ? 'tab-active' : ''}`}
-          onClick={() => handleTabChange('history')}
-        >
-          История турниров
-        </button>
-        <button
-          className={`tab ${tab === 'leaderboard' ? 'tab-active' : ''}`}
-          onClick={() => handleTabChange('leaderboard')}
-        >
-          Общий рейтинг
-        </button>
+      <div className="title-row">
+        <h2 className="screen-title">{t('tournaments.title')}</h2>
+        <InfoTip text={t('tournaments.title_hint')} />
       </div>
 
-      {tab === 'history' && (
-        <>
-          {tournaments.length === 0 && <p className="subtitle">Пока нет турниров</p>}
-          <div className="tournament-list">
-            {tournaments.map((t) => (
-              <div
-                key={t.id}
-                className={`tournament-card ${userParticipated(t) ? 'highlight-card' : ''}`}
-              >
-                <div className="tournament-card-header" onClick={() => toggleExpand(t.id)}>
-                  <div className="tournament-card-info">
-                    <span className="tournament-date">
-                      {new Date(t.date).toLocaleDateString('ru-RU')}
-                    </span>
-                    <span className="tournament-players">
-                      {getAllPlayers(t).length} игроков
-                    </span>
-                  </div>
-                  <div className="tournament-tags">
-                    <span className="tag tag-muted">{t.matches.length} матчей</span>
-                    {t.isCancelled
-                      ? <span className="tag tag-red">Отменена</span>
-                      : t.isEarlyFinished
-                        ? <span className="tag tag-gold">Досрочно</span>
-                        : t.isFinished
-                          ? <span className="tag tag-green">Завершён</span>
-                          : <span className="tag tag-red">Не завершён</span>
-                    }
-                    {t.seasonId != null
-                      ? <span className="tag tag-gold">Сезонная</span>
-                      : <span className="tag tag-blue">Товарищеская</span>
-                    }
-                  </div>
+      {tournaments.length === 0 && <p className="subtitle">{t('tournaments.noTournaments')}</p>}
+      <div className="tournament-list">
+        {tournaments.map((tr) => (
+          <div
+            key={tr.id}
+            className={`tournament-card ${userParticipated(tr) ? 'highlight-card' : ''}`}
+          >
+            <div className="tournament-card-header" onClick={() => toggleExpand(tr.id)}>
+              <div className="tournament-card-info">
+                <span className="tournament-date">
+                  {new Date(tr.date).toLocaleDateString(dateFmt)}
+                </span>
+                <span className="tournament-players">
+                  {getAllPlayers(tr).length} {t('tournaments.players')}
+                </span>
+              </div>
+              <div className="tournament-tags">
+                <span className="tag tag-muted">{tr.matches.length} {t('tournaments.matches')}</span>
+                {tr.isCancelled
+                  ? <span className="tag tag-red">{t('tournaments.cancelled')}</span>
+                  : tr.isEarlyFinished
+                    ? <span className="tag tag-gold">{t('tournaments.earlyFinished')}</span>
+                    : tr.isFinished
+                      ? <span className="tag tag-green">{t('tournaments.finished')}</span>
+                      : <span className="tag tag-red">{t('tournaments.notFinished')}</span>
+                }
+                {tr.seasonId != null
+                  ? <span className="tag tag-gold">{t('tournaments.seasonal')}</span>
+                  : <span className="tag tag-blue">{t('tournaments.friendly')}</span>
+                }
+              </div>
+            </div>
+            {expanded.has(tr.id) && (
+              <div className="tournament-card-body">
+                <div className="tournament-matches">
+                  {tr.matches.map((m) => (
+                    <MatchRow key={m.id} match={m} onPlayerClick={(login) => navigate(`/profile/${login}`)} />
+                  ))}
                 </div>
-                {expanded.has(t.id) && (
-                  <div className="tournament-card-body">
-                    <div className="tournament-matches">
-                      {t.matches.map((m) => (
-                        <MatchRow key={m.id} match={m} onPlayerClick={(login) => navigate(`/profile/${login}`)} />
+                {tr.results.length > 0 && (
+                  <table className="results-table">
+                    <thead>
+                      <tr><th>#</th><th>{t('tournaments.player')}</th><th>{t('tournaments.points')}</th></tr>
+                    </thead>
+                    <tbody>
+                      {tr.results.map((r, i) => (
+                        <tr key={r.player.id}>
+                          <td>{i + 1}</td>
+                          <td>
+                            <span
+                              className="clickable-player"
+                              onClick={() => navigate(`/profile/${r.player.login}`)}
+                            >
+                              {r.player.name}
+                            </span>
+                          </td>
+                          <td className="points-cell">{r.score.toFixed(1)}</td>
+                        </tr>
                       ))}
-                    </div>
-                    {t.results.length > 0 && (
-                      <table className="results-table">
-                        <thead>
-                          <tr><th>#</th><th>Игрок</th><th>Очки</th></tr>
-                        </thead>
-                        <tbody>
-                          {t.results.map((r, i) => (
-                            <tr key={r.player.id}>
-                              <td>{i + 1}</td>
-                              <td>
-                                <span
-                                  className="clickable-player"
-                                  onClick={() => navigate(`/profile/${r.player.login}`)}
-                                >
-                                  {r.player.name}
-                                </span>
-                              </td>
-                              <td className="points-cell">{r.score.toFixed(1)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
+                    </tbody>
+                  </table>
                 )}
               </div>
-            ))}
+            )}
           </div>
-        </>
-      )}
-
-      {tab === 'leaderboard' && (
-        <>
-          {leaderboardLoading && (
-            <div className="center-content" style={{ padding: '40px 0' }}>
-              <div className="loading-spinner" />
-            </div>
-          )}
-          {error && !leaderboardLoading && <p className="error">{error}</p>}
-          {leaderboard && !leaderboardLoading && (
-            <div className="leaderboard-table-wrapper">
-              <table className="results-table leaderboard-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Игрок</th>
-                    <th>Игр</th>
-                    <th>Очки</th>
-                    <th>Ср.</th>
-                    <th>С.игр</th>
-                    <th>С.очки</th>
-                    <th>С.ср.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboard.map((s, i) => (
-                    <tr key={s.player.id} className={i === 0 ? 'first-place' : ''}>
-                      <td>{i + 1}</td>
-                      <td>
-                        <span
-                          className="clickable-player"
-                          onClick={() => navigate(`/profile/${s.player.login}`)}
-                        >
-                          <span className="avatar avatar-xs">
-                            {s.player.imageUrl ? <img src={s.player.imageUrl} alt="" /> : <span>{s.player.name[0]}</span>}
-                          </span>
-                          {s.player.name}
-                        </span>
-                      </td>
-                      <td>{s.totalGames}</td>
-                      <td className="points-cell">{s.totalPoints.toFixed(1)}</td>
-                      <td>{s.averagePointsPerGame.toFixed(1)}</td>
-                      <td>{s.seasonGames}</td>
-                      <td>{s.seasonTotalPoints.toFixed(1)}</td>
-                      <td>{s.seasonAveragePoints.toFixed(1)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {leaderboard && leaderboard.length === 0 && !leaderboardLoading && (
-            <p className="subtitle">Пока нет данных для рейтинга</p>
-          )}
-        </>
-      )}
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 
 interface Props {
@@ -10,6 +11,7 @@ export default function SlideMenu({ open, onClose }: Props) {
   const { user, miniProfile, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   const handleNav = (path: string) => {
     navigate(path);
@@ -23,11 +25,12 @@ export default function SlideMenu({ open, onClose }: Props) {
   };
 
   const navItems = [
-    { label: 'Играть', path: '/play' },
-    { label: 'Профиль', path: '/profile' },
-    { label: 'Турниры', path: '/tournaments' },
-    { label: 'Сезон', path: '/seasons' },
-    { label: 'Что нового', path: '/changelog' },
+    { label: t('menu.play'), path: '/play' },
+    { label: t('menu.profile'), path: '/profile' },
+    { label: t('menu.tournaments'), path: '/tournaments' },
+    { label: t('menu.seasons'), path: '/seasons' },
+    { label: t('menu.club'), path: '/club' },
+    { label: t('menu.changelog'), path: '/changelog' },
   ];
 
   return (
@@ -44,7 +47,10 @@ export default function SlideMenu({ open, onClose }: Props) {
           </div>
           <div className="slide-menu-user-name">{miniProfile?.name ?? user?.name}</div>
           {miniProfile && miniProfile.seasonScore > 0 && (
-            <div className="slide-menu-rating">Рейтинг: {miniProfile.seasonScore.toFixed(1)}</div>
+            <div className="slide-menu-rating">{t('menu.rating', { score: miniProfile.seasonScore.toFixed(1) })}</div>
+          )}
+          {miniProfile?.clubName && (
+            <div className="slide-menu-club">{miniProfile.clubName}</div>
           )}
         </div>
         <div className="slide-menu-nav">
@@ -60,7 +66,7 @@ export default function SlideMenu({ open, onClose }: Props) {
         </div>
         <div className="slide-menu-footer">
           <button className="slide-menu-item logout" onClick={handleLogout}>
-            Выход
+            {t('menu.logout')}
           </button>
         </div>
       </nav>

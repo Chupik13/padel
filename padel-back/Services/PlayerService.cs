@@ -6,10 +6,14 @@ namespace padel.Services;
 
 public class PlayerService(PadelDbContext db)
 {
-    public async Task<List<UserResult>> GetAllUsers()
+    public async Task<List<UserResult>> GetAllUsers(int? clubId = null)
     {
-        return await db.Users
-            .Include(u => u.Player)
+        var query = db.Users.Include(u => u.Player).AsQueryable();
+
+        if (clubId.HasValue)
+            query = query.Where(u => u.Player.ClubId == clubId);
+
+        return await query
             .Select(u => new UserResult
             {
                 Id = u.Player.Id,
@@ -71,7 +75,7 @@ public class PlayerService(PadelDbContext db)
                 SeasonTotalPoints = Math.Round(s.SeasonTotalPoints, 2),
                 SeasonAveragePoints = s.SeasonGames > 0 ? Math.Round(s.SeasonTotalPoints / s.SeasonGames, 2) : 0
             })
-            .OrderByDescending(s => s.TotalPoints)
+            .OrderByDescending(s => s.AveragePointsPerGame)
             .ToList();
 
         return new GlobalLeaderboardResult { Players = players };

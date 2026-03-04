@@ -46,3 +46,6 @@ padel-back/wwwroot/avatars/
 
 # Claude
 .claude/
+
+# Testing
+TESTING.md
