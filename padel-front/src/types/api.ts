@@ -5,6 +5,7 @@ export interface UserResult {
   login: string;
   name: string;
   imageUrl: string | null;
+  hasEmail: boolean;
 }
 
 export interface ProfileMiniResult {
@@ -148,6 +149,7 @@ export interface RegisterRequest {
   login: string;
   password: string;
   name: string;
+  email: string;
 }
 
 export interface TeamRequest {

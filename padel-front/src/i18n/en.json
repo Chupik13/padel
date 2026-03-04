@@ -21,11 +21,13 @@
     "fillAllFields": "Fill in all fields",
     "invalidCredentials": "Invalid login or password",
     "noAccount": "No account?",
-    "register": "Sign up"
+    "register": "Sign up",
+    "forgotPassword": "Forgot password?"
   },
   "register": {
     "placeholder_login": "Login",
     "placeholder_name": "Name",
+    "placeholder_email": "Email",
     "placeholder_password": "Password",
     "submit": "Sign up",
     "submitting": "Signing up...",
@@ -207,6 +209,30 @@
     "allClubs": "All clubs",
     "allClubs_hint": "A club is your group for playing together. All tournaments, seasons and rankings are tied to your club. Join an existing club or create your own",
     "detail_hint": "Club members table sorted by total points. Shows: tournament count, all-time points and current season stats"
+  },
+  "emailPrompt": {
+    "title": "Enter your email",
+    "description": "Email is needed for password recovery",
+    "placeholder": "Email",
+    "submit": "Save",
+    "error": "Failed to save email"
+  },
+  "forgotPassword": {
+    "title": "Password recovery",
+    "placeholder": "Login",
+    "submit": "Send",
+    "submitting": "Sending...",
+    "success": "If the account exists and has an email linked — a message has been sent"
+  },
+  "resetPassword": {
+    "title": "New password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "submit": "Reset password",
+    "submitting": "Resetting...",
+    "success": "Password changed successfully",
+    "error": "Link is invalid or expired",
+    "mismatch": "Passwords don't match"
   },
   "common": {
     "back": "Back",

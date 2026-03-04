@@ -13,6 +13,7 @@ public class PadelDbContext(DbContextOptions<PadelDbContext> options) : DbContex
     public DbSet<TeamMatch> TeamMatches => Set<TeamMatch>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Club> Clubs => Set<Club>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -71,6 +72,14 @@ public class PadelDbContext(DbContextOptions<PadelDbContext> options) : DbContex
                 .WithMany(c => c.Tournaments)
                 .HasForeignKey(t => t.ClubId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<PasswordResetToken>(entity =>
+        {
+            entity.HasIndex(t => t.Token).IsUnique();
+            entity.HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserId);
         });
 
         modelBuilder.Entity<Season>(entity =>

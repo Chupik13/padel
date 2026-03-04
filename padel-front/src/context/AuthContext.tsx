@@ -10,9 +10,10 @@ interface AuthContextType {
   hasClub: boolean;
   loading: boolean;
   login: (loginStr: string, password: string) => Promise<void>;
-  register: (loginStr: string, password: string, name: string) => Promise<void>;
+  register: (loginStr: string, password: string, name: string, email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshMiniProfile: () => Promise<void>;
+  setUserEmail: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -49,8 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refreshMiniProfile();
   };
 
-  const register = async (loginStr: string, password: string, name: string) => {
-    const result = await authApi.register({ login: loginStr, password, name });
+  const register = async (loginStr: string, password: string, name: string, email: string) => {
+    const result = await authApi.register({ login: loginStr, password, name, email });
     setUser(result);
     await refreshMiniProfile();
   };
@@ -61,10 +62,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMiniProfile(null);
   };
 
+  const setUserEmail = async (email: string) => {
+    await authApi.setEmail(email);
+    setUser(prev => prev ? { ...prev, hasEmail: true } : prev);
+  };
+
   const hasClub = miniProfile?.clubId != null;
 
   return (
-    <AuthContext.Provider value={{ user, miniProfile, hasClub, loading, login, register, logout, refreshMiniProfile }}>
+    <AuthContext.Provider value={{ user, miniProfile, hasClub, loading, login, register, logout, refreshMiniProfile, setUserEmail }}>
       {children}
     </AuthContext.Provider>
   );

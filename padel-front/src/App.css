@@ -1219,18 +1219,18 @@ html, body {
 }
 
 .season-card {
-  min-width: 75%;
-  max-width: 92vw;
+  width: 92vw;
+  flex: 0 0 92vw;
   background: var(--bg-card);
   border-radius: var(--radius);
   padding: 24px;
   scroll-snap-align: center;
-  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
   border: 2px solid transparent;
   min-height: 70vh;
+  overflow: hidden;
 }
 
 .season-card-current {
@@ -1274,6 +1274,8 @@ html, body {
   border-radius: var(--radius);
   padding: 16px;
   margin-top: 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .score-chart-title {
@@ -1288,6 +1290,7 @@ html, body {
   gap: 4px;
   align-items: flex-end;
   height: 120px;
+  min-width: 0;
   overflow-x: auto;
 }
 
@@ -1701,7 +1704,8 @@ html, body {
   }
 
   .season-card {
-    min-width: 75%;
+    width: 75%;
+    flex: 0 0 75%;
   }
 }
 
@@ -1965,10 +1969,7 @@ html, body {
 }
 
 .info-tip-bubble {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
   background: var(--bg-card);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
@@ -1979,7 +1980,7 @@ html, body {
   color: var(--text);
   white-space: normal;
   width: max-content;
-  max-width: 260px;
+  max-width: min(260px, calc(100vw - 16px));
   z-index: 100;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   line-height: 1.4;

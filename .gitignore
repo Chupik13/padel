@@ -29,6 +29,12 @@ obj/
 
 # Build artifacts
 *.tar.gz
+padel-back/publish-linux/
+
+# Secrets
+.env
+.env.*
+padel-back/appsettings.Development.json
 
 # Docker & deploy
 docker-compose.yml

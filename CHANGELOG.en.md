@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.1] — 2026-03-04
+
+### Added
+
+- **Password recovery via email** — "Forgot password?" link on the login page. Enter login → receive email with reset link → set new password page. Sent via Gmail SMTP.
+- **Email on registration** — email field is now required when creating an account.
+- **"Enter your email" modal** — existing users without an email will see a modal prompting them to add one (needed for password recovery).
+
+### Fixed
+
+- **Tooltips stay within screen bounds** — info tips (i) are now always positioned within the visible area and no longer clipped by overflow containers.
+
+---
+
 ## [1.2.0] — 2026-03-04
 
 ### Added

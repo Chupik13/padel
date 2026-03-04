@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 export default function RegisterPage() {
   const [login, setLogin] = useState('');
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,14 +22,14 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!login.trim() || !name.trim() || !password) {
+    if (!login.trim() || !name.trim() || !email.trim() || !password) {
       setError(t('register.fillAllFields'));
       return;
     }
     setLoading(true);
     setError('');
     try {
-      await auth.register(login.trim(), password, name.trim());
+      await auth.register(login.trim(), password, name.trim(), email.trim());
       localStorage.setItem('lastSeenVersion', __APP_VERSION__);
       navigate('/play', { replace: true });
     } catch {
@@ -59,6 +60,13 @@ export default function RegisterPage() {
           placeholder={t('register.placeholder_name')}
           value={name}
           onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          className="input"
+          type="email"
+          placeholder={t('register.placeholder_email')}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
         <input
           className="input"

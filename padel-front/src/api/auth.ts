@@ -22,3 +22,24 @@ export function logout(): Promise<void> {
 export function getMe(): Promise<UserResult> {
   return apiFetch<UserResult>('/api/auth/me');
 }
+
+export function setEmail(email: string): Promise<void> {
+  return apiFetch<void>('/api/auth/set-email', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function forgotPassword(login: string): Promise<void> {
+  return apiFetch<void>('/api/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ login }),
+  });
+}
+
+export function resetPassword(token: string, newPassword: string): Promise<void> {
+  return apiFetch<void>('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword }),
+  });
+}

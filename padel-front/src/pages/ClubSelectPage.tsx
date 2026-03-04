@@ -200,8 +200,6 @@ export default function ClubSelectPage() {
                   <th>{t('tournaments.gamesShort')}</th>
                   <th>{t('tournaments.points')}</th>
                   <th>{t('tournaments.avg')}</th>
-                  <th>{t('tournaments.seasonGames')}</th>
-                  <th>{t('tournaments.seasonPoints')}</th>
                   <th>{t('tournaments.seasonAvg')}</th>
                 </tr>
               </thead>
@@ -223,8 +221,6 @@ export default function ClubSelectPage() {
                     <td>{m.totalGames}</td>
                     <td className="points-cell">{m.totalPoints.toFixed(1)}</td>
                     <td>{m.averagePointsPerGame.toFixed(1)}</td>
-                    <td>{m.seasonGames}</td>
-                    <td>{m.seasonTotalPoints.toFixed(1)}</td>
                     <td>{m.seasonAveragePoints.toFixed(1)}</td>
                   </tr>
                 ))}

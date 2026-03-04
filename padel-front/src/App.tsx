@@ -3,8 +3,11 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ClubGuard from './components/ClubGuard';
+import EmailPrompt from './components/EmailPrompt';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import ClubSelectPage from './pages/ClubSelectPage';
 import PlayPage from './pages/PlayPage';
 import ProfilePage from './pages/ProfilePage';
@@ -34,9 +37,12 @@ export default function App() {
 
   return (
     <div className="app">
+      {user && !user.hasEmail && <EmailPrompt />}
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/club" element={<ClubSelectPage />} />
