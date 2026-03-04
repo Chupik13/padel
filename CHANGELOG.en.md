@@ -11,11 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- **Partner win stats** — each profile section (current season, overall stats, previous seasons) now has a collapsible partner list showing win rate and games together. Sorted by win rate.
-- **Head-to-Head comparison** — viewing another player's profile shows a comparison card: matches as opponents (win bar), matches as partners (win rate, games together), average scores. New endpoint `GET /api/profile/head-to-head/{login}`.
+- **Clubs** — club system for organizing player groups. Create your own club or join an existing one. All tournaments, seasons and rankings are tied to a club. First login prompts you to choose or create a club.
+- **RU/EN localization** — full interface translation to Russian and English. Language toggle in the header and on login/register pages. Language auto-detected from browser, saved to localStorage.
+- **Partner win stats** — each profile section (current season, overall stats, previous seasons) now has a collapsible partner list showing win rate and games played together.
+- **Head-to-Head comparison** — viewing another player's profile shows a comparison card: matches as opponents, matches as partners, average scores.
 - **Quick rematch** — after finishing a live tournament, the host sees a "Rematch" button that creates a new tournament with the same players and format.
-- **Season score chart** — on the seasons page, clicking a player row shows a bar chart of tournament results. Green bars = counted in ranking, grey = not counted. Data comes from backend (`TournamentScores` in `PlayerSeasonScoreResult`).
-- **Season countdown** — current season card shows a badge with days remaining (with RU/EN pluralization).
+- **Season score chart** — on the seasons page, clicking a player row shows a chart of tournament results. Green bars = counted in ranking, grey = not counted.
+- **Season countdown** — current season card shows days remaining until the season ends.
+- **Auto-redirect to "What's new"** — on version update, the app automatically opens the latest changes page.
+- **Info tips** — "i" icons on key pages with explanations of game mechanics (seasons, tournaments, profile, clubs).
+
+### Changed
+
+- **"What's new" page** — changelog is now fetched from GitHub (CHANGELOG.md / CHANGELOG.en.md) instead of a hardcoded list. Versions are grouped by major.minor, latest version is highlighted on redirect.
+- **Seasons tied to club** — leaderboard and season stats are filtered by the current user's club.
+- **Tournaments tied to club** — tournament history and leaderboard only show data from your club.
+- **New app icon** — favicon replaced with an SVG logo.
 
 ---
 
