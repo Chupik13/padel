@@ -72,7 +72,7 @@ export default function PlayPage() {
   const { user, miniProfile } = useAuth();
   const { t, i18n } = useTranslation();
   const [screen, setScreen] = useState<PlayScreen>('loading');
-  const [format, setFormat] = useState<TournamentFormat>('balanced');
+  const [, setFormat] = useState<TournamentFormat>('balanced');
   const [formatOption, setFormatOption] = useState<FormatOption | null>(null);
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [showResume, setShowResume] = useState(false);
