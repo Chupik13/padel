@@ -8,17 +8,24 @@ export interface UserResult {
   hasEmail: boolean;
 }
 
+export interface ClubMiniResult {
+  id: number;
+  name: string;
+}
+
 export interface ProfileMiniResult {
   name: string;
   seasonScore: number;
   clubId: number | null;
   clubName: string | null;
+  clubs: ClubMiniResult[];
 }
 
 export interface ClubResult {
   id: number;
   name: string;
   memberCount: number;
+  isPrimary: boolean;
 }
 
 export interface ProfileResult {
@@ -184,6 +191,7 @@ export interface MatchSetupRequest {
 export interface CreateLiveTournamentRequest {
   isBalanced: boolean;
   inSeason: boolean;
+  clubId?: number;
   matches: MatchSetupRequest[];
 }
 

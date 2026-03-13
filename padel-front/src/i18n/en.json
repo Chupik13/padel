@@ -47,7 +47,10 @@
     "subtitle": "Select number of matches",
     "balanced": "Balanced",
     "small": "Small",
-    "medium": "Medium"
+    "medium": "Medium",
+    "matchCount": "Number of matches",
+    "selectMatches": "Select number of matches",
+    "matches": "matches"
   },
   "playerNames": {
     "title": "Player names",
@@ -59,8 +62,10 @@
   "playerSelect": {
     "title": "Select {{count}} players",
     "selected": "Selected: {{selected}} / {{count}}",
+    "titleRange": "Select players",
+    "selectedRange": "Selected: {{selected}} ({{min}} to {{max}})",
     "loadError": "Failed to load players",
-    "submit": "Start tournament"
+    "submit": "Next"
   },
   "match": {
     "noMatches": "No matches to display",
@@ -106,7 +111,9 @@
     "newTournament": "New tournament",
     "gameType": "Game type",
     "seasonalDesc": "Results count towards season",
-    "friendlyDesc": "Game without season ranking"
+    "friendlyDesc": "Game without season ranking",
+    "selectClub": "Select club to play",
+    "noClub": "Join a club to start playing"
   },
   "profile": {
     "loadError": "Failed to load profile",
@@ -217,7 +224,11 @@
     "confirm": "Yes, join",
     "allClubs": "All clubs",
     "allClubs_hint": "A club is your group for playing together. All tournaments, seasons and rankings are tied to your club. Join an existing club or create your own",
-    "detail_hint": "Club members table sorted by total points. Shows: tournament count, all-time points and current season stats"
+    "detail_hint": "Club members table sorted by total points. Shows: tournament count, all-time points and current season stats",
+    "myClubs": "My clubs",
+    "setPrimary": "Set as primary",
+    "primary": "Primary",
+    "alreadyMember": "Already a member"
   },
   "emailPrompt": {
     "title": "Enter your email",
@@ -246,9 +257,10 @@
   "settings": {
     "title": "Settings",
     "nameLabel": "Name",
+    "primaryClub": "Primary club",
     "save": "Save",
     "saving": "Saving...",
-    "saved": "Name updated",
+    "saved": "Settings updated",
     "saveError": "Failed to save"
   },
   "feedback": {

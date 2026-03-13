@@ -9,4 +9,5 @@ public class Player
     public int? ClubId { get; set; }
     public Club? Club { get; set; }
     public List<PlayerTeam> PlayerTeams { get; set; } = [];
+    public List<PlayerClub> PlayerClubs { get; set; } = [];
 }

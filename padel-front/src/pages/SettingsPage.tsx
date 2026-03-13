@@ -2,16 +2,20 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { updateName } from '../api/profile';
+import { setPrimaryClub } from '../api/clubs';
 import { useAuth } from '../context/AuthContext';
 
 export default function SettingsPage() {
-  const { user, refreshMiniProfile } = useAuth();
+  const { user, miniProfile, refreshMiniProfile } = useAuth();
   const [name, setName] = useState(user?.name ?? '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  const clubs = miniProfile?.clubs ?? [];
+  const primaryClubId = miniProfile?.clubId ?? null;
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -26,6 +30,17 @@ export default function SettingsPage() {
       setError(t('settings.saveError'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePrimaryChange = async (clubId: number) => {
+    setError('');
+    setSaved(false);
+    try {
+      await setPrimaryClub(clubId);
+      await refreshMiniProfile();
+    } catch {
+      setError(t('settings.saveError'));
     }
   };
 
@@ -44,6 +59,22 @@ export default function SettingsPage() {
           maxLength={50}
           onChange={(e) => { setName(e.target.value); setSaved(false); }}
         />
+
+        {clubs.length >= 2 && (
+          <>
+            <label className="settings-label">{t('settings.primaryClub')}</label>
+            <select
+              className="input"
+              value={primaryClubId ?? ''}
+              onChange={(e) => handlePrimaryChange(Number(e.target.value))}
+            >
+              {clubs.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </>
+        )}
+
         {error && <p className="error">{error}</p>}
         {saved && <p className="success">{t('settings.saved')}</p>}
         <button className="btn btn-primary" onClick={handleSave} disabled={saving || !name.trim()}>

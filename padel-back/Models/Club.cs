@@ -6,5 +6,6 @@ public class Club
     public string Name { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public List<Player> Players { get; set; } = [];
+    public List<PlayerClub> PlayerClubs { get; set; } = [];
     public List<Tournament> Tournaments { get; set; } = [];
 }

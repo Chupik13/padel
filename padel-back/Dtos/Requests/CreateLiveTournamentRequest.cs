@@ -4,6 +4,7 @@ public class CreateLiveTournamentRequest
 {
     public bool IsBalanced { get; set; }
     public bool InSeason { get; set; }
+    public int? ClubId { get; set; }
     public List<MatchSetupRequest> Matches { get; set; } = [];
 }
 

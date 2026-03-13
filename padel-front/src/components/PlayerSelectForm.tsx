@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getClubMembers } from '../api/clubs';
 import { getPlayers } from '../api/players';
 import type { PlayerResult } from '../types/api';
 
+const MIN_PLAYERS = 4;
+const MAX_PLAYERS = 6;
+
 interface Props {
-  count: number;
+  clubId?: number;
   onSubmit: (players: PlayerResult[]) => void;
   onBack: () => void;
 }
 
-export default function PlayerSelectForm({ count, onSubmit, onBack }: Props) {
+export default function PlayerSelectForm({ clubId, onSubmit, onBack }: Props) {
   const [allPlayers, setAllPlayers] = useState<PlayerResult[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -17,18 +21,19 @@ export default function PlayerSelectForm({ count, onSubmit, onBack }: Props) {
   const { t } = useTranslation();
 
   useEffect(() => {
-    getPlayers()
+    const load = clubId ? getClubMembers(clubId) : getPlayers();
+    load
       .then(setAllPlayers)
       .catch(() => setError(t('playerSelect.loadError')))
       .finally(() => setLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clubId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (id: number) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
-      } else if (next.size < count) {
+      } else if (next.size < MAX_PLAYERS) {
         next.add(id);
       }
       return next;
@@ -36,7 +41,7 @@ export default function PlayerSelectForm({ count, onSubmit, onBack }: Props) {
   };
 
   const handleSubmit = () => {
-    if (selected.size !== count) return;
+    if (selected.size < MIN_PLAYERS || selected.size > MAX_PLAYERS) return;
     const players = allPlayers.filter((p) => selected.has(p.id));
     onSubmit(players);
   };
@@ -51,8 +56,8 @@ export default function PlayerSelectForm({ count, onSubmit, onBack }: Props) {
 
   return (
     <div className="screen">
-      <h2 className="screen-title">{t('playerSelect.title', { count })}</h2>
-      <p className="subtitle">{t('playerSelect.selected', { selected: selected.size, count })}</p>
+      <h2 className="screen-title">{t('playerSelect.titleRange')}</h2>
+      <p className="subtitle">{t('playerSelect.selectedRange', { selected: selected.size, min: MIN_PLAYERS, max: MAX_PLAYERS })}</p>
       {error && <p className="error">{error}</p>}
       <div className="player-chips">
         {allPlayers.map((player) => (
@@ -76,7 +81,7 @@ export default function PlayerSelectForm({ count, onSubmit, onBack }: Props) {
         <button className="btn btn-secondary" onClick={onBack}>
           {t('common.back')}
         </button>
-        <button className="btn btn-primary" onClick={handleSubmit} disabled={selected.size !== count}>
+        <button className="btn btn-primary" onClick={handleSubmit} disabled={selected.size < MIN_PLAYERS}>
           {t('playerSelect.submit')}
         </button>
       </div>

@@ -8,7 +8,6 @@ import { getSeasons } from '../api/seasons';
 import { createLiveTournament, getUnfinishedTournaments, getClubActiveTournaments, updateMatchScore, navigateMatch, finishTournament, earlyFinishTournament, cancelTournament } from '../api/tournaments';
 import { useAuth } from '../context/AuthContext';
 import { useTournamentHub } from '../hooks/useTournamentHub';
-import PlayerCountSelect from '../components/PlayerCountSelect';
 import FormatSelect from '../components/FormatSelect';
 import PlayerSelectForm from '../components/PlayerSelectForm';
 import MatchView from '../components/MatchView';
@@ -17,7 +16,13 @@ import InfoTip from '../components/InfoTip';
 
 const ADMIN_LOGIN = 't224215';
 
-type PlayScreen = 'loading' | 'unfinished' | 'select-count' | 'select-format' | 'select-players' | 'season-toggle' | 'match' | 'results';
+type PlayScreen = 'loading' | 'unfinished' | 'no-club' | 'select-club' | 'season-toggle' | 'select-players' | 'select-matches' | 'match' | 'results';
+
+function getSeasonalFormat(playerCount: number): FormatOption {
+  if (playerCount === 4) return { label: '', matchCount: 9, generationMode: 'balanced', k: 3 };
+  if (playerCount === 5) return { label: '', matchCount: 10, generationMode: 'balanced', k: 2 };
+  return { label: '', matchCount: 15, generationMode: 'balanced', k: 2 };
+}
 
 function tournamentResultToLocal(result: TournamentResult): Tournament {
   const playerMap = new Map<number, Player>();
@@ -64,10 +69,9 @@ function getPlayersFromResult(t: TournamentResult): PlayerResult[] {
 }
 
 export default function PlayPage() {
-  const { user } = useAuth();
+  const { user, miniProfile } = useAuth();
   const { t, i18n } = useTranslation();
   const [screen, setScreen] = useState<PlayScreen>('loading');
-  const [playerCount, setPlayerCount] = useState(4);
   const [format, setFormat] = useState<TournamentFormat>('balanced');
   const [formatOption, setFormatOption] = useState<FormatOption | null>(null);
   const [tournament, setTournament] = useState<Tournament | null>(null);
@@ -80,6 +84,11 @@ export default function PlayPage() {
   const [unfinishedList, setUnfinishedList] = useState<TournamentResult[]>([]);
   const [clubActiveList, setClubActiveList] = useState<TournamentResult[]>([]);
 
+  // Club selection
+  const [selectedClubId, setSelectedClubId] = useState<number | undefined>();
+  const [selectedClubName, setSelectedClubName] = useState('');
+
+  const clubs = miniProfile?.clubs ?? [];
   const isAdmin = user?.login === ADMIN_LOGIN;
 
   const { joinTournament, leaveTournament } = useTournamentHub({
@@ -128,7 +137,6 @@ export default function PlayPage() {
   const loadUnfinished = useCallback(async () => {
     try {
       const list = await getUnfinishedTournaments();
-      // Spectator tournament: user is participant but not host (and not admin)
       if (!isAdmin) {
         const spectator = list.find((t) => t.hostPlayerId !== user?.id);
         if (spectator && spectator.matches.length > 0) {
@@ -136,14 +144,11 @@ export default function PlayPage() {
           return;
         }
       }
-      // Host (or admin) unfinished tournaments
       const hostList = isAdmin ? list : list.filter((t) => t.hostPlayerId === user?.id);
 
-      // Load club active tournaments (for spectator view)
       let clubActive: TournamentResult[] = [];
       try {
         const allClubActive = await getClubActiveTournaments();
-        // Exclude tournaments the user is already involved in
         const myIds = new Set(list.map((t) => t.id));
         clubActive = allClubActive.filter((t) => !myIds.has(t.id));
       } catch { /* ignore */ }
@@ -155,8 +160,27 @@ export default function PlayPage() {
         return;
       }
     } catch { /* no unfinished */ }
-    return null; // signal: no unfinished found
+    return null;
   }, [user?.id, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const goToFirstScreen = () => {
+    if (clubs.length === 0 && !miniProfile?.clubId) {
+      setScreen('no-club');
+      return;
+    }
+    if (clubs.length > 1) {
+      setScreen('select-club');
+    } else {
+      if (clubs.length === 1) {
+        setSelectedClubId(clubs[0].id);
+        setSelectedClubName(clubs[0].name);
+      } else if (miniProfile?.clubId) {
+        setSelectedClubId(miniProfile.clubId);
+        setSelectedClubName(miniProfile.clubName ?? '');
+      }
+      setScreen('season-toggle');
+    }
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -168,10 +192,9 @@ export default function PlayPage() {
 
       const result = await loadUnfinished();
       if (result === null) {
-        // No unfinished tournaments found
         const saved = loadTournament();
         if (saved) setShowResume(true);
-        setScreen('select-count');
+        goToFirstScreen();
       }
     };
 
@@ -193,12 +216,7 @@ export default function PlayPage() {
     }
 
     joinTournament(t.id);
-
-    if (t.isFinished) {
-      setScreen('results');
-    } else {
-      setScreen('match');
-    }
+    setScreen(t.isFinished ? 'results' : 'match');
   };
 
   const handleResume = () => {
@@ -216,39 +234,49 @@ export default function PlayPage() {
     setShowResume(false);
   };
 
-  const handleSelectCount = (count: number) => {
-    setPlayerCount(count);
-    setScreen('select-format');
+  const handleSelectClub = (clubId: number, clubName: string) => {
+    setSelectedClubId(clubId);
+    setSelectedClubName(clubName);
+    setScreen('season-toggle');
   };
 
-  const handleSelectFormat = (option: FormatOption) => {
-    setFormatOption(option);
-    setFormat(option.generationMode === 'balanced' ? 'balanced' : 'fixed-5');
+  const handleSelectGameType = (seasonal: boolean) => {
+    setInSeason(seasonal);
     setScreen('select-players');
   };
 
   const handlePlayersSubmit = (players: PlayerResult[]) => {
     setApiPlayers(players);
-    if (hasActiveSeason && formatOption?.generationMode === 'balanced') {
-      setScreen('season-toggle');
+    const count = players.length;
+    if (inSeason) {
+      const opt = getSeasonalFormat(count);
+      setFormatOption(opt);
+      setFormat('balanced');
+      startTournament(players, true, opt);
     } else {
-      startTournament(players, false);
+      setScreen('select-matches');
     }
   };
 
-  const startTournament = async (players: PlayerResult[], seasonal: boolean) => {
+  const handleSelectMatches = (option: FormatOption) => {
+    setFormatOption(option);
+    setFormat(option.generationMode === 'balanced' ? 'balanced' : 'fixed-5');
+    startTournament(apiPlayers, false, option);
+  };
+
+  const startTournament = async (players: PlayerResult[], seasonal: boolean, opt: FormatOption) => {
     const localPlayers: Player[] = players.map((p) => ({ id: p.id, name: p.name }));
     const ids = localPlayers.map((p) => p.id);
-    const opt = formatOption;
     const matches =
-      opt?.generationMode === 'balanced'
-        ? generateSchedule(ids, opt.k)
-        : generateFixedSchedule(ids, opt?.matchCount ?? 5);
+      opt.generationMode === 'balanced'
+        ? generateSchedule(ids, opt.k!)
+        : generateFixedSchedule(ids, opt.matchCount);
 
     try {
       const result = await createLiveTournament({
-        isBalanced: opt?.generationMode === 'balanced',
+        isBalanced: opt.generationMode === 'balanced',
         inSeason: seasonal,
+        clubId: selectedClubId,
         matches: matches.map((m) => ({
           teamOne: { firstPlayerId: m.team1[0], secondPlayerId: m.team1[1] },
           teamTwo: { firstPlayerId: m.team2[0], secondPlayerId: m.team2[1] },
@@ -260,23 +288,23 @@ export default function PlayPage() {
         players: localPlayers,
         matches: matches.map((m, i) => ({ ...m, startedAt: i === 0 ? now : undefined })),
         currentMatchIndex: 0,
-        format,
+        format: opt.generationMode === 'balanced' ? 'balanced' : undefined,
         id: result.id,
         hostPlayerId: result.hostPlayerId ?? undefined,
         isFinished: false,
       };
       setTournament(tr);
       setIsHost(true);
-      setInSeason(seasonal);
+      setFormatOption(opt);
       joinTournament(result.id);
       setScreen('match');
     } catch {
-      // Fallback to local-only mode
       const now = new Date().toISOString();
-      const tr: Tournament = { players: localPlayers, matches: matches.map((m, i) => ({ ...m, startedAt: i === 0 ? now : undefined })), currentMatchIndex: 0, format };
+      const fmt: TournamentFormat | undefined = opt.generationMode === 'balanced' ? 'balanced' : undefined;
+      const tr: Tournament = { players: localPlayers, matches: matches.map((m, i) => ({ ...m, startedAt: i === 0 ? now : undefined })), currentMatchIndex: 0, format: fmt };
       setTournament(tr);
       saveLocal(tr);
-      setInSeason(seasonal);
+      setFormatOption(opt);
       setScreen('match');
     }
   };
@@ -290,7 +318,6 @@ export default function PlayPage() {
       return updated;
     });
 
-    // Sync to server for live tournaments
     setTournament((prev) => {
       if (prev?.id && isHost) {
         updateMatchScore(prev.id, {
@@ -337,9 +364,7 @@ export default function PlayPage() {
     if (tournament?.id && isHost) {
       try {
         await finishTournament(tournament.id);
-      } catch {
-        // continue to results anyway
-      }
+      } catch { /* continue */ }
     }
     setScreen('results');
   }, [tournament?.id, isHost]);
@@ -356,12 +381,10 @@ export default function PlayPage() {
         setEarlyFinishError(t('match.earlyFinishMinGames'));
         return;
       }
-      // continue anyway for other errors
     }
-    // Update local state: all 0:0 matches → 8:8
     setTournament((prev) => {
       if (!prev) return prev;
-      const updated = {
+      return {
         ...prev,
         isFinished: true,
         matches: prev.matches.map((m) =>
@@ -370,18 +393,13 @@ export default function PlayPage() {
             : m
         ),
       };
-      return updated;
     });
     setScreen('results');
   }, [tournament?.id, t]);
 
   const handleCancel = useCallback(async () => {
     if (tournament?.id) {
-      try {
-        await cancelTournament(tournament.id);
-      } catch {
-        // ignore
-      }
+      try { await cancelTournament(tournament.id); } catch { /* ignore */ }
     }
     handleRestart();
   }, [tournament?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -392,8 +410,10 @@ export default function PlayPage() {
     }
     clearTournament();
     setTournament(null);
-    await startTournament(apiPlayers, inSeason);
-  }, [tournament?.id, apiPlayers, inSeason, formatOption, format]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (formatOption) {
+      await startTournament(apiPlayers, inSeason, formatOption);
+    }
+  }, [tournament?.id, apiPlayers, inSeason, formatOption, selectedClubId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRestart = async () => {
     if (tournament?.id) {
@@ -408,7 +428,6 @@ export default function PlayPage() {
     setIsHost(false);
     setHostName(undefined);
 
-    // Re-check for remaining unfinished tournaments
     try {
       const list = await getUnfinishedTournaments();
       const hostList = isAdmin ? list : list.filter((t) => t.hostPlayerId === user?.id);
@@ -418,7 +437,7 @@ export default function PlayPage() {
         return;
       }
     } catch { /* ignore */ }
-    setScreen('select-count');
+    goToFirstScreen();
   };
 
   const dateFmt = i18n.language === 'ru' ? 'ru-RU' : 'en-US';
@@ -512,57 +531,83 @@ export default function PlayPage() {
           <button
             className="btn btn-primary"
             style={{ marginTop: 16, flex: 'none' }}
-            onClick={() => setScreen('select-count')}
+            onClick={goToFirstScreen}
           >
             {t('play.newTournament')}
           </button>
         </div>
       )}
 
-      {screen === 'select-count' && <PlayerCountSelect onSelect={handleSelectCount} />}
-
-      {screen === 'select-format' && (
-        <FormatSelect
-          playerCount={playerCount}
-          onSelect={(opt) => handleSelectFormat(opt)}
-          onBack={() => setScreen('select-count')}
-        />
+      {screen === 'no-club' && (
+        <div className="screen center-content">
+          <h1 className="title">{t('app.title')}</h1>
+          <p className="subtitle">{t('play.noClub')}</p>
+        </div>
       )}
 
-      {screen === 'select-players' && (
-        <PlayerSelectForm
-          count={playerCount}
-          onSubmit={handlePlayersSubmit}
-          onBack={() => setScreen('select-format')}
-        />
+      {screen === 'select-club' && (
+        <div className="screen center-content">
+          <h1 className="title">{t('app.title')}</h1>
+          <p className="subtitle">{t('play.selectClub')}</p>
+          <div className="card-buttons">
+            {clubs.map((c) => (
+              <button key={c.id} className="card-button" onClick={() => handleSelectClub(c.id, c.name)}>
+                <span className="card-button-number">{c.name[0]}</span>
+                <span className="card-button-label">{c.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {screen === 'season-toggle' && (
         <div className="screen center-content">
+          <h1 className="title">{t('app.title')}</h1>
+          {selectedClubName && <p className="play-club-name">{selectedClubName}</p>}
           <div className="title-row">
             <h2 className="screen-title">{t('play.gameType')}</h2>
             <InfoTip text={t('play.gameType_hint')} />
           </div>
           <div className="season-toggle-options">
+            {hasActiveSeason && (
+              <button
+                className="format-button"
+                onClick={() => handleSelectGameType(true)}
+              >
+                <span className="format-button-title">{t('play.seasonal')}</span>
+                <span className="format-button-desc">{t('play.seasonalDesc')}</span>
+              </button>
+            )}
             <button
               className="format-button"
-              onClick={() => startTournament(apiPlayers, true)}
-            >
-              <span className="format-button-title">{t('play.seasonal')}</span>
-              <span className="format-button-desc">{t('play.seasonalDesc')}</span>
-            </button>
-            <button
-              className="format-button"
-              onClick={() => startTournament(apiPlayers, false)}
+              onClick={() => handleSelectGameType(false)}
             >
               <span className="format-button-title">{t('play.friendly')}</span>
               <span className="format-button-desc">{t('play.friendlyDesc')}</span>
             </button>
           </div>
-          <button className="btn btn-secondary" style={{ maxWidth: 360, width: '100%', flex: 'none' }} onClick={() => setScreen('select-players')}>
-            {t('common.back')}
-          </button>
+          {clubs.length > 1 && (
+            <button className="btn btn-secondary" style={{ maxWidth: 360, width: '100%', flex: 'none' }} onClick={() => setScreen('select-club')}>
+              {t('common.back')}
+            </button>
+          )}
         </div>
+      )}
+
+      {screen === 'select-players' && (
+        <PlayerSelectForm
+          clubId={selectedClubId}
+          onSubmit={handlePlayersSubmit}
+          onBack={() => setScreen('season-toggle')}
+        />
+      )}
+
+      {screen === 'select-matches' && (
+        <FormatSelect
+          playerCount={apiPlayers.length}
+          onSelect={handleSelectMatches}
+          onBack={() => setScreen('select-players')}
+        />
       )}
 
       {screen === 'match' && tournament && (

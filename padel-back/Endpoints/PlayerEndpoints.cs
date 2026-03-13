@@ -18,9 +18,9 @@ public static class PlayerEndpoints
             return Results.Ok(result);
         });
 
-        group.MapGet("/leaderboard", async (PlayerService playerService) =>
+        group.MapGet("/leaderboard", async (PlayerService playerService, int? clubId) =>
         {
-            var result = await playerService.GetGlobalLeaderboard();
+            var result = await playerService.GetGlobalLeaderboard(clubId);
             return Results.Ok(result);
         });
     }

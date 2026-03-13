@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.3.1] — 2026-03-13
+
+### Added
+
+- **Multi-club support** — players can now belong to multiple clubs simultaneously. Primary club can be selected in settings. Stats, seasons and tournaments are tied to the primary club.
+- **Club selection for tournaments** — the Play page lets you choose which club to create a tournament in (when you belong to multiple clubs).
+- **Redesigned clubs page** — "My clubs" and "All clubs" sections, join without leaving current club, action menu (set as primary / leave).
+
+### Improved
+
+- **Simplified tournament creation** — removed the separate player count step, count is now derived from selected players (4–6). New flow: club → game type → players → match count → start.
+- **Profile settings** — added primary club selector (when you belong to multiple clubs).
+
+### Fixed
+
+- **Club stats** — leaderboard now correctly filters by the selected club instead of showing the same data across all clubs.
+- **Schedule generation for 4 players** — fixed "no matches" error when creating a tournament with 4 players and repeated matches.
+- **Member count update** — club member count updates immediately after joining without page reload.
+- **Club creation doesn't override primary** — creating a new club no longer overwrites the primary club if one is already set.
+- **Block tournaments without club** — cannot create a tournament if the player hasn't joined any club.
+
+---
+
 ## [1.3.0] — 2026-03-13
 
 ### Added

@@ -1,39 +1,32 @@
 import { useTranslation } from 'react-i18next';
 import type { FormatOption } from '../types';
 
-type FormatLabelKey = 'balanced' | 'small' | 'medium';
-
-function getFormatOptions(playerCount: number, t: (key: string) => string): FormatOption[] {
-  const label = (key: FormatLabelKey) => t(`format.${key}`);
-
+function getFormatOptions(playerCount: number): FormatOption[] {
   if (playerCount === 4) {
     return [
-      { label: label('balanced'), matchCount: 3, generationMode: 'balanced', k: 1 },
-      { label: label('small'), matchCount: 6, generationMode: 'balanced', k: 2 },
-      { label: label('medium'), matchCount: 9, generationMode: 'balanced', k: 3 },
+      { label: '3', matchCount: 3, generationMode: 'balanced', k: 1 },
+      { label: '6', matchCount: 6, generationMode: 'balanced', k: 2 },
+      { label: '9', matchCount: 9, generationMode: 'balanced', k: 3 },
     ];
   }
 
   if (playerCount === 5) {
     return [
-      { label: label('balanced'), matchCount: 5, generationMode: 'balanced', k: 1 },
-      { label: label('medium'), matchCount: 10, generationMode: 'balanced', k: 2 },
+      { label: '5', matchCount: 5, generationMode: 'balanced', k: 1 },
+      { label: '10', matchCount: 10, generationMode: 'balanced', k: 2 },
+      { label: '15', matchCount: 15, generationMode: 'balanced', k: 3 },
     ];
   }
 
   if (playerCount === 6) {
     return [
-      { label: label('balanced'), matchCount: 15, generationMode: 'balanced', k: 2 },
-      { label: label('small'), matchCount: 5, generationMode: 'fixed' },
-      { label: label('medium'), matchCount: 10, generationMode: 'fixed' },
+      { label: '6', matchCount: 6, generationMode: 'fixed' },
+      { label: '9', matchCount: 9, generationMode: 'fixed' },
+      { label: '15', matchCount: 15, generationMode: 'balanced', k: 2 },
     ];
   }
 
-  const totalPairs = (playerCount * (playerCount - 1)) / 2;
-  const k = 1;
-  return [
-    { label: label('balanced'), matchCount: (totalPairs * k) / 2, generationMode: 'balanced', k },
-  ];
+  return [];
 }
 
 interface Props {
@@ -44,16 +37,17 @@ interface Props {
 
 export default function FormatSelect({ playerCount, onSelect, onBack }: Props) {
   const { t } = useTranslation();
-  const options = getFormatOptions(playerCount, t);
+  const options = getFormatOptions(playerCount);
 
   return (
     <div className="screen center-content">
-      <h1 className="screen-title">{t('format.title')}</h1>
-      <p className="subtitle">{t('format.subtitle')}</p>
-      <div className="format-buttons">
+      <h1 className="screen-title">{t('format.matchCount')}</h1>
+      <p className="subtitle">{t('format.selectMatches')}</p>
+      <div className="card-buttons">
         {options.map((opt) => (
-          <button key={opt.label} className="format-button" onClick={() => onSelect(opt)}>
-            <span className="format-button-title">{opt.label} ({opt.matchCount})</span>
+          <button key={opt.matchCount} className="card-button" onClick={() => onSelect(opt)}>
+            <span className="card-button-number">{opt.matchCount}</span>
+            <span className="card-button-label">{t('format.matches')}</span>
           </button>
         ))}
       </div>

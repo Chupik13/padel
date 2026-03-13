@@ -21,8 +21,8 @@ public static class ClubEndpoints
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
                 return Results.Unauthorized();
 
-            var result = await clubService.GetMyClub(playerId);
-            return result is null ? Results.NoContent() : Results.Ok(result);
+            var result = await clubService.GetMyClubs(playerId);
+            return Results.Ok(result);
         });
 
         group.MapPost("/", async (CreateClubRequest request, ClubService clubService, HttpContext httpContext) =>
@@ -51,13 +51,23 @@ public static class ClubEndpoints
             return success ? Results.Ok() : Results.BadRequest();
         });
 
-        group.MapPost("/leave", async (ClubService clubService, HttpContext httpContext) =>
+        group.MapPost("/{id:int}/leave", async (int id, ClubService clubService, HttpContext httpContext) =>
         {
             var playerIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
                 return Results.Unauthorized();
 
-            var success = await clubService.Leave(playerId);
+            var success = await clubService.Leave(playerId, id);
+            return success ? Results.Ok() : Results.BadRequest();
+        });
+
+        group.MapPut("/{id:int}/primary", async (int id, ClubService clubService, HttpContext httpContext) =>
+        {
+            var playerIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
+                return Results.Unauthorized();
+
+            var success = await clubService.SetPrimaryClub(playerId, id);
             return success ? Results.Ok() : Results.BadRequest();
         });
     }

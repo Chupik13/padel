@@ -122,6 +122,12 @@ export function generateSchedule(playerIds: number[], customK?: number): Match[]
 
   backtrack();
 
+  // Fallback: if backtracking couldn't fill (e.g. 4 players k>1 — only 3 unique matches),
+  // use generateFixedSchedule which supports repeating candidates
+  if (result.length < expectedMatches) {
+    return generateFixedSchedule(playerIds, expectedMatches);
+  }
+
   const matches: Match[] = result.map((m) => ({
     team1: m.team1,
     team2: m.team2,

@@ -11,7 +11,7 @@ public class PlayerService(PadelDbContext db)
         var query = db.Users.Include(u => u.Player).AsQueryable();
 
         if (clubId.HasValue)
-            query = query.Where(u => u.Player.ClubId == clubId);
+            query = query.Where(u => u.Player.PlayerClubs.Any(pc => pc.ClubId == clubId));
 
         return await query
             .Select(u => new UserResult
@@ -24,10 +24,15 @@ public class PlayerService(PadelDbContext db)
             .ToListAsync();
     }
 
-    public async Task<GlobalLeaderboardResult> GetGlobalLeaderboard()
+    public async Task<GlobalLeaderboardResult> GetGlobalLeaderboard(int? clubId = null)
     {
-        var tournaments = await db.Tournaments
-            .Where(t => t.IsFinished && !t.IsCancelled && t.Matches.Any())
+        var query = db.Tournaments
+            .Where(t => t.IsFinished && !t.IsCancelled && t.Matches.Any());
+
+        if (clubId.HasValue)
+            query = query.Where(t => t.ClubId == clubId.Value);
+
+        var tournaments = await query
             .Include(t => t.Matches)
                 .ThenInclude(m => m.TeamMatches)
                     .ThenInclude(tm => tm.Team)

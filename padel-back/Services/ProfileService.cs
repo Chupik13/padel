@@ -145,12 +145,18 @@ public class ProfileService(PadelDbContext db)
             seasonScore = CalculateSeasonScore(player.Id, seasonTournaments, currentSeason.RequireGamesCount);
         }
 
+        var clubs = await db.PlayerClubs
+            .Where(pc => pc.PlayerId == player.Id)
+            .Select(pc => new ClubMiniResult { Id = pc.ClubId, Name = pc.Club.Name })
+            .ToListAsync();
+
         return new ProfileMiniResult
         {
             Name = player.Name,
             SeasonScore = Math.Round(seasonScore, 2),
             ClubId = player.ClubId,
-            ClubName = player.Club?.Name
+            ClubName = player.Club?.Name,
+            Clubs = clubs
         };
     }
 

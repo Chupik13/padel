@@ -1,20 +1,18 @@
 import { useTranslation } from 'react-i18next';
-import InfoTip from './InfoTip';
 
 interface Props {
+  clubName?: string;
   onSelect: (count: number) => void;
 }
 
-export default function PlayerCountSelect({ onSelect }: Props) {
+export default function PlayerCountSelect({ clubName, onSelect }: Props) {
   const { t } = useTranslation();
 
   return (
     <div className="screen center-content">
       <h1 className="title">{t('app.title')}</h1>
-      <div className="title-row">
-        <p className="subtitle">{t('playerCount.subtitle')}</p>
-        <InfoTip text={t('playerCount.subtitle_hint')} />
-      </div>
+      {clubName && <p className="play-club-name">{clubName}</p>}
+      <p className="subtitle">{t('playerCount.subtitle')}</p>
       <div className="card-buttons">
         {[4, 5, 6].map((n) => (
           <button key={n} className="card-button" onClick={() => onSelect(n)}>

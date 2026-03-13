@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using padel.Dtos.Requests;
 using padel.Hubs;
 using padel.Models;
@@ -47,7 +48,18 @@ public static class TournamentEndpoints
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
                 return Results.Unauthorized();
 
-            var clubId = await EndpointHelpers.GetPlayerClubId(httpContext, db);
+            int? clubId;
+            if (request.ClubId.HasValue)
+            {
+                var isMember = await db.PlayerClubs.AnyAsync(pc => pc.PlayerId == playerId && pc.ClubId == request.ClubId.Value);
+                if (!isMember) return Results.BadRequest();
+                clubId = request.ClubId.Value;
+            }
+            else
+            {
+                clubId = await EndpointHelpers.GetPlayerClubId(httpContext, db);
+            }
+            if (!clubId.HasValue) return Results.BadRequest();
             var result = await tournamentService.CreateLiveTournament(playerId, request, clubId);
             return Results.Created($"/api/tournaments/{result.Id}", result);
         });

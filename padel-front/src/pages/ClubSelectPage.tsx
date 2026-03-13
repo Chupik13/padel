@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { getClubs, getClubMembers, joinClub, createClub, leaveClub } from '../api/clubs';
+import { getClubs, getClubMembers, joinClub, createClub, leaveClub, setPrimaryClub } from '../api/clubs';
 import { getGlobalLeaderboard } from '../api/players';
 import type { ClubResult, PlayerResult, GlobalPlayerStats } from '../types/api';
 import InfoTip from '../components/InfoTip';
@@ -34,12 +34,13 @@ export default function ClubSelectPage() {
 
   // Detail screen state — open own club by default
   const [selectedClubId, setSelectedClubId] = useState<number | null>(miniProfile?.clubId ?? null);
+  const [detailVersion, setDetailVersion] = useState(0);
   const [detailMembers, setDetailMembers] = useState<MemberRow[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showJoinConfirm, setShowJoinConfirm] = useState(false);
 
-  const hasClub = miniProfile?.clubId != null;
-  const myClubId = miniProfile?.clubId ?? null;
+  const myClubIds = new Set(miniProfile?.clubs?.map((c) => c.id) ?? []);
+  const primaryClubId = miniProfile?.clubId ?? null;
 
   // Load clubs list
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function ClubSelectPage() {
     }
     setDetailLoading(true);
     setError('');
-    Promise.all([getClubMembers(selectedClubId), getGlobalLeaderboard()])
+    Promise.all([getClubMembers(selectedClubId), getGlobalLeaderboard(selectedClubId)])
       .then(([players, lb]) => {
         const playerIds = new Set(players.map((p) => p.id));
         const statsMap = new Map<number, GlobalPlayerStats>();
@@ -83,7 +84,7 @@ export default function ClubSelectPage() {
       })
       .catch(() => setError(t('club.loadError')))
       .finally(() => setDetailLoading(false));
-  }, [selectedClubId, t]);
+  }, [selectedClubId, detailVersion, t]);
 
   const handleJoin = async (clubId: number) => {
     setJoining(true);
@@ -91,12 +92,18 @@ export default function ClubSelectPage() {
     try {
       await joinClub(clubId);
       await refreshMiniProfile();
-      navigate('/play');
+      const updated = await getClubs();
+      setClubs(updated);
+      setDetailVersion((v) => v + 1);
+      setShowJoinConfirm(false);
+      // If first club — go to play
+      if (myClubIds.size === 0) {
+        navigate('/play');
+      }
     } catch {
       setError(t('club.joinError'));
     } finally {
       setJoining(false);
-      setShowJoinConfirm(false);
     }
   };
 
@@ -115,17 +122,34 @@ export default function ClubSelectPage() {
     }
   };
 
-  const handleLeave = async () => {
+  const handleLeave = async (clubId: number) => {
     setLeaving(true);
     setError('');
     try {
-      await leaveClub();
+      await leaveClub(clubId);
       await refreshMiniProfile();
-      setSelectedClubId(null);
+      const updated = await getClubs();
+      setClubs(updated);
+      setDetailVersion((v) => v + 1);
+      setShowMenu(false);
+      // If left the selected club, go back to list
+      if (selectedClubId === clubId) {
+        setSelectedClubId(null);
+      }
     } catch {
       setError(t('club.leaveBlocked'));
     } finally {
       setLeaving(false);
+    }
+  };
+
+  const handleSetPrimary = async (clubId: number) => {
+    setError('');
+    try {
+      await setPrimaryClub(clubId);
+      await refreshMiniProfile();
+    } catch {
+      setError(t('club.loadError'));
     }
   };
 
@@ -140,35 +164,36 @@ export default function ClubSelectPage() {
   // --- Screen 2: Club detail ---
   if (selectedClubId !== null) {
     const selectedClub = clubs.find((c) => c.id === selectedClubId);
-    const isMyClub = myClubId === selectedClubId;
+    const isMember = myClubIds.has(selectedClubId);
+    const isPrimary = primaryClubId === selectedClubId;
 
     return (
       <div className="screen club-page">
-        {isMyClub ? (
-          clubs.length > 1 && (
-            <button className="btn-back" onClick={() => { setSelectedClubId(null); setShowMenu(false); setError(''); }}>
-              ← {t('club.allClubs')}
-            </button>
-          )
-        ) : (
-          <button className="btn-back" onClick={() => { setSelectedClubId(null); setShowMenu(false); setError(''); }}>
-            ← {t('common.back')}
-          </button>
-        )}
+        <button className="btn-back" onClick={() => { setSelectedClubId(null); setShowMenu(false); setError(''); }}>
+          ← {t('club.allClubs')}
+        </button>
         <div className="club-header">
           <div className="club-title-row">
             <h2 className="screen-title">{selectedClub?.name ?? '...'}</h2>
             <InfoTip text={t('club.detail_hint')} />
-            {isMyClub && (
+            {isMember && (
               <div className="club-menu-wrapper">
                 <button className="club-menu-btn" onClick={() => setShowMenu((v) => !v)}>&#9662;</button>
                 {showMenu && (
                   <>
                     <div className="club-menu-backdrop" onClick={() => setShowMenu(false)} />
                     <div className="club-menu-dropdown">
+                      {!isPrimary && (
+                        <button
+                          className="club-menu-dropdown-item"
+                          onClick={() => { handleSetPrimary(selectedClubId); setShowMenu(false); }}
+                        >
+                          {t('club.setPrimary')}
+                        </button>
+                      )}
                       <button
                         className="club-menu-dropdown-item danger"
-                        onClick={handleLeave}
+                        onClick={() => handleLeave(selectedClubId)}
                         disabled={leaving}
                       >
                         {leaving ? '...' : t('club.leave')}
@@ -182,6 +207,9 @@ export default function ClubSelectPage() {
           <span className="club-member-count">
             {t('club.members', { count: selectedClub?.memberCount ?? detailMembers.length })}
           </span>
+          {isMember && isPrimary && (
+            <span className="club-primary-label">{t('club.primary')}</span>
+          )}
         </div>
 
         {error && <p className="error">{error}</p>}
@@ -229,7 +257,7 @@ export default function ClubSelectPage() {
           </div>
         )}
 
-        {!isMyClub && !hasClub && !detailLoading && (
+        {!isMember && !detailLoading && (
           <button
             className="btn btn-primary club-join-btn"
             onClick={() => setShowJoinConfirm(true)}
@@ -267,6 +295,9 @@ export default function ClubSelectPage() {
   }
 
   // --- Screen 1: Club list ---
+  const myClubs = clubs.filter((c) => myClubIds.has(c.id));
+  const otherClubs = clubs.filter((c) => !myClubIds.has(c.id));
+
   return (
     <div className="screen club-page">
       <div className="title-row">
@@ -276,57 +307,83 @@ export default function ClubSelectPage() {
 
       {error && <p className="error">{error}</p>}
 
-      {clubs.length > 0 && (
-        <div className="club-list">
-          {clubs.map((club) => (
-            <button
-              key={club.id}
-              className={`club-card${club.id === myClubId ? ' club-card-mine' : ''}`}
-              onClick={() => setSelectedClubId(club.id)}
-            >
-              <span className="club-card-name">{club.name}</span>
-              <span className="club-card-members">
-                {t('club.members', { count: club.memberCount })}
-              </span>
-            </button>
-          ))}
-        </div>
+      {myClubs.length > 0 && (
+        <>
+          <h3 className="club-section-title">{t('club.myClubs')}</h3>
+          <div className="club-list">
+            {myClubs.map((club) => (
+              <button
+                key={club.id}
+                className={`club-card club-card-mine${club.id === primaryClubId ? ' club-card-primary' : ''}`}
+                onClick={() => setSelectedClubId(club.id)}
+              >
+                <span className="club-card-name">
+                  {club.name}
+                  {club.id === primaryClubId && (
+                    <span className="club-badge primary">{t('club.primary')}</span>
+                  )}
+                </span>
+                <span className="club-card-members">
+                  {t('club.members', { count: club.memberCount })}
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
-      {!hasClub && (
-        showCreate ? (
-          <div className="club-create-form">
-            <input
-              className="input"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder={t('club.clubName')}
-              maxLength={50}
-            />
-            <div className="club-create-actions">
+      {otherClubs.length > 0 && (
+        <>
+          {myClubs.length > 0 && <h3 className="club-section-title">{t('club.otherClubs')}</h3>}
+          <div className="club-list">
+            {otherClubs.map((club) => (
               <button
-                className="btn btn-primary"
-                onClick={handleCreate}
-                disabled={creating || !newName.trim()}
+                key={club.id}
+                className="club-card"
+                onClick={() => setSelectedClubId(club.id)}
               >
-                {creating ? '...' : t('club.create')}
+                <span className="club-card-name">{club.name}</span>
+                <span className="club-card-members">
+                  {t('club.members', { count: club.memberCount })}
+                </span>
               </button>
-              <button
-                className="btn"
-                onClick={() => setShowCreate(false)}
-              >
-                {t('common.cancel')}
-              </button>
-            </div>
+            ))}
           </div>
-        ) : (
-          <button
-            className="btn btn-secondary club-create-btn"
-            onClick={() => setShowCreate(true)}
-          >
-            {t('club.create')}
-          </button>
-        )
+        </>
+      )}
+
+      {showCreate ? (
+        <div className="club-create-form">
+          <input
+            className="input"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder={t('club.clubName')}
+            maxLength={50}
+          />
+          <div className="club-create-actions">
+            <button
+              className="btn btn-primary"
+              onClick={handleCreate}
+              disabled={creating || !newName.trim()}
+            >
+              {creating ? '...' : t('club.create')}
+            </button>
+            <button
+              className="btn"
+              onClick={() => setShowCreate(false)}
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          className="btn btn-secondary club-create-btn"
+          onClick={() => setShowCreate(true)}
+        >
+          {t('club.create')}
+        </button>
       )}
     </div>
   );

@@ -5,8 +5,8 @@ export function getClubs(): Promise<ClubResult[]> {
   return apiFetch<ClubResult[]>('/api/clubs');
 }
 
-export function getMyClub(): Promise<ClubResult | null> {
-  return apiFetch<ClubResult | null>('/api/clubs/my');
+export function getMyClubs(): Promise<ClubResult[]> {
+  return apiFetch<ClubResult[]>('/api/clubs/my');
 }
 
 export function createClub(name: string): Promise<ClubResult> {
@@ -24,6 +24,10 @@ export function joinClub(clubId: number): Promise<void> {
   return apiFetch<void>(`/api/clubs/${clubId}/join`, { method: 'POST' });
 }
 
-export function leaveClub(): Promise<void> {
-  return apiFetch<void>('/api/clubs/leave', { method: 'POST' });
+export function leaveClub(clubId: number): Promise<void> {
+  return apiFetch<void>(`/api/clubs/${clubId}/leave`, { method: 'POST' });
+}
+
+export function setPrimaryClub(clubId: number): Promise<void> {
+  return apiFetch<void>(`/api/clubs/${clubId}/primary`, { method: 'PUT' });
 }
