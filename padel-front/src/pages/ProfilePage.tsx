@@ -81,6 +81,11 @@ export default function ProfilePage() {
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
         <div className="title-row">
           <h2 className="profile-name">{profile.name}</h2>
+          {isOwn && (
+            <button className="settings-btn" onClick={() => navigate('/settings')} title={t('settings.title')}>
+              ⚙️
+            </button>
+          )}
           {isOwn && <InfoTip text={t('profile.title_hint')} />}
         </div>
       </div>

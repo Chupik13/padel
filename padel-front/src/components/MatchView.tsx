@@ -12,6 +12,7 @@ interface Props {
   onEarlyFinish?: () => void;
   readOnly?: boolean;
   hostName?: string;
+  earlyFinishError?: string;
 }
 
 function getPlayer(players: Player[], id: number): Player | undefined {
@@ -53,7 +54,7 @@ function computeStandings(players: Player[], matches: Match[], upTo: number) {
   });
 }
 
-export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, onFinish, onCancel, onEarlyFinish, readOnly = false, hostName }: Props) {
+export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, onFinish, onCancel, onEarlyFinish, readOnly = false, hostName, earlyFinishError }: Props) {
   const { players, matches, currentMatchIndex } = tournament;
   const safeIndex = matches.length > 0 ? Math.min(currentMatchIndex, matches.length - 1) : 0;
   const match = matches.length > 0 ? matches[safeIndex] : undefined;
@@ -64,11 +65,40 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
   const [score1, setScore1] = useState(match?.score1?.toString() ?? '');
   const [score2, setScore2] = useState(match?.score2?.toString() ?? '');
   const [showEarlyFinishModal, setShowEarlyFinishModal] = useState(false);
+  const [matchElapsed, setMatchElapsed] = useState('');
+  const [tournamentElapsed, setTournamentElapsed] = useState('');
+
+  const tournamentStartedAt = matches[0]?.startedAt;
 
   useEffect(() => {
     setScore1(match?.score1?.toString() ?? '');
     setScore2(match?.score2?.toString() ?? '');
   }, [safeIndex, match?.score1, match?.score2]);
+
+  useEffect(() => {
+    const fmt = (ms: number) => {
+      if (ms < 0) return '';
+      const mins = Math.floor(ms / 60000);
+      const secs = Math.floor((ms % 60000) / 1000);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+    const update = () => {
+      const now = Date.now();
+      if (match?.startedAt) {
+        setMatchElapsed(fmt(now - new Date(match.startedAt).getTime()));
+      } else {
+        setMatchElapsed('');
+      }
+      if (tournamentStartedAt) {
+        setTournamentElapsed(fmt(now - new Date(tournamentStartedAt).getTime()));
+      } else {
+        setTournamentElapsed('');
+      }
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [match?.startedAt, tournamentStartedAt]);
 
   if (!match) {
     return (
@@ -129,6 +159,7 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
           </div>
         </div>
       )}
+      {earlyFinishError && <p className="error" style={{ textAlign: 'center', marginBottom: 8 }}>{earlyFinishError}</p>}
       <div className="match-header">
         {!readOnly && onEarlyFinish && (
           <button className="cancel-tournament-link early-finish-link" onClick={() => setShowEarlyFinishModal(true)}>
@@ -147,6 +178,12 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
       <div className="progress-bar">
         <div className="progress-fill" style={{ width: `${progress}%` }} />
       </div>
+      {(tournamentElapsed || matchElapsed) && (
+        <div className="match-timer">
+          {tournamentElapsed && <span className="timer-tournament">{tournamentElapsed}</span>}
+          {matchElapsed && <span className="timer-match">{matchElapsed}</span>}
+        </div>
+      )}
 
       <div className="match-teams">
         <div className="team-card">

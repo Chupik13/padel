@@ -11,7 +11,8 @@
     "logout": "Выход",
     "rating": "Рейтинг: {{score}}",
     "openMenu": "Открыть меню",
-    "club": "Клуб"
+    "club": "Клуб",
+    "feedback": "Обратная связь"
   },
   "login": {
     "placeholder_login": "Логин",
@@ -68,6 +69,7 @@
     "host": "Хост: {{name}}",
     "earlyFinishConfirm": "Все неотыгранные матчи получат счёт 8:8. Завершить?",
     "earlyFinish": "Завершить досрочно",
+    "earlyFinishMinGames": "Нужно сыграть минимум 60% матчей",
     "cancel": "Отменить",
     "counter": "Матч {{current}} из {{total}}",
     "team1": "Команда 1",
@@ -100,6 +102,7 @@
     "matches": "матчей",
     "seasonal": "Сезонная",
     "friendly": "Товарищеская",
+    "clubGames": "Текущие игры в клубе",
     "newTournament": "Новый турнир",
     "gameType": "Тип игры",
     "seasonalDesc": "Результаты идут в зачёт сезона",
@@ -162,7 +165,9 @@
     "seasonGames": "С.игр",
     "seasonPoints": "С.очки",
     "seasonAvg": "С.ср.",
-    "noLeaderboard": "Пока нет данных для рейтинга"
+    "noLeaderboard": "Пока нет данных для рейтинга",
+    "deleteConfirm": "Удалить турнир? Это действие необратимо.",
+    "deleteBtn": "Удалить"
   },
   "seasons": {
     "title": "Сезоны",
@@ -178,7 +183,11 @@
     "points": "Очки",
     "avg": "Ср.",
     "games": "Игр",
+    "finished": "Завершён",
+    "seasonNumber": "Сезон {{number}}",
+    "seasonStarts": "Сезон {{number}} начинается {{date}}",
     "tapToSeeChart": "Нажмите на игрока для графика",
+    "daysRemaining": "дней осталось",
     "daysLeft_one": "день до конца сезона",
     "daysLeft_few": "дня до конца сезона",
     "daysLeft_many": "дней до конца сезона"
@@ -235,6 +244,30 @@
     "success": "Пароль успешно изменён",
     "error": "Ссылка недействительна или истекла",
     "mismatch": "Пароли не совпадают"
+  },
+  "settings": {
+    "title": "Настройки",
+    "nameLabel": "Имя",
+    "save": "Сохранить",
+    "saving": "Сохранение...",
+    "saved": "Имя обновлено",
+    "saveError": "Не удалось сохранить"
+  },
+  "feedback": {
+    "title": "Обратная связь",
+    "description": "Свяжитесь с нами по любым вопросам",
+    "subjectLabel": "Тема",
+    "messageLabel": "Сообщение",
+    "emailLabel": "Email для ответа (необязательно)",
+    "messagePlaceholder": "Опишите вашу идею или проблему...",
+    "emailPlaceholder": "Если отличается от вашего",
+    "subjectSuggestion": "Предложение по улучшению",
+    "subjectBug": "Нашёл баг",
+    "subjectOther": "Другое",
+    "submit": "Отправить",
+    "sending": "Отправка...",
+    "sent": "Сообщение отправлено!",
+    "sendError": "Не удалось отправить сообщение"
   },
   "common": {
     "back": "Назад",

@@ -55,6 +55,7 @@ export interface MatchResult {
   teamTwoPlayer2: PlayerResult;
   teamOneScore: number;
   teamTwoScore: number;
+  startedAt?: string;
 }
 
 export interface PlayerScoreResult {
@@ -74,6 +75,7 @@ export interface TournamentResult {
   isFinished: boolean;
   isEarlyFinished: boolean;
   isCancelled: boolean;
+  finishedAt?: string;
 }
 
 export interface SuperGameResult {

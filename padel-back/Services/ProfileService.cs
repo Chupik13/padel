@@ -162,7 +162,7 @@ public class ProfileService(PadelDbContext db)
                     .ThenInclude(tm => tm.Team)
                         .ThenInclude(t => t.PlayerTeams)
                             .ThenInclude(pt => pt.Player)
-            .Where(t => !t.IsCancelled && t.Matches.Any(m =>
+            .Where(t => !t.IsCancelled && t.IsFinished && t.Matches.Any(m =>
                 m.TeamMatches.Any(tm =>
                     tm.Team.PlayerTeams.Any(pt => pt.PlayerId == playerId))));
 
@@ -243,7 +243,7 @@ public class ProfileService(PadelDbContext db)
                 .ThenInclude(m => m.TeamMatches)
                     .ThenInclude(tm => tm.Team)
                         .ThenInclude(t => t.PlayerTeams)
-            .Where(t => t.SeasonId == seasonId && !t.IsCancelled);
+            .Where(t => t.SeasonId == seasonId && !t.IsCancelled && t.IsFinished);
 
         if (clubId.HasValue)
             query = query.Where(t => t.ClubId == clubId.Value);

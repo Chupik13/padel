@@ -39,6 +39,9 @@ public class TournamentService(PadelDbContext db)
         if (request.ClubId.HasValue)
             query = query.Where(t => t.ClubId == request.ClubId.Value);
 
+        if (request.IncludeCancelled != true)
+            query = query.Where(t => !t.IsCancelled);
+
         if (request.PlayerId.HasValue)
         {
             var playerId = request.PlayerId.Value;
@@ -131,7 +134,7 @@ public class TournamentService(PadelDbContext db)
         for (var i = 0; i < request.Matches.Count; i++)
         {
             var matchReq = request.Matches[i];
-            var match = new Match { TournamentId = tournament.Id, MatchOrder = i };
+            var match = new Match { TournamentId = tournament.Id, MatchOrder = i, StartedAt = i == 0 ? now : null };
             db.Matches.Add(match);
             await db.SaveChangesAsync();
 
@@ -183,11 +186,17 @@ public class TournamentService(PadelDbContext db)
 
     public async Task<bool> NavigateMatch(int tournamentId, int hostPlayerId, int matchIndex, bool isAdmin = false)
     {
-        var tournament = await db.Tournaments.FirstOrDefaultAsync(t => t.Id == tournamentId);
+        var tournament = await FullTournamentQuery().FirstOrDefaultAsync(t => t.Id == tournamentId);
         if (tournament is null || (!isAdmin && tournament.HostPlayerId != hostPlayerId) || tournament.IsFinished)
             return false;
 
         tournament.CurrentMatchIndex = matchIndex;
+
+        // Set StartedAt for the new match if not already set
+        var match = tournament.Matches.OrderBy(m => m.MatchOrder).ElementAtOrDefault(matchIndex);
+        if (match is not null && match.StartedAt is null)
+            match.StartedAt = DateTime.UtcNow;
+
         await db.SaveChangesAsync();
         return true;
     }
@@ -220,15 +229,23 @@ public class TournamentService(PadelDbContext db)
             return false;
 
         tournament.IsFinished = true;
+        tournament.FinishedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return true;
     }
 
-    public async Task<bool> EarlyFinishTournament(int tournamentId, int hostPlayerId, bool isAdmin = false)
+    public async Task<(bool Success, string? Error)> EarlyFinishTournament(int tournamentId, int hostPlayerId, bool isAdmin = false)
     {
         var tournament = await FullTournamentQuery().FirstOrDefaultAsync(t => t.Id == tournamentId);
         if (tournament is null || (!isAdmin && tournament.HostPlayerId != hostPlayerId) || tournament.IsFinished)
-            return false;
+            return (false, null);
+
+        // Check minimum 60% games played
+        var totalMatches = tournament.Matches.Count;
+        var playedMatches = tournament.Matches.Count(m =>
+            m.TeamMatches.Count >= 2 && (m.TeamMatches[0].Score != 0 || m.TeamMatches[1].Score != 0));
+        if (totalMatches > 0 && (double)playedMatches / totalMatches < 0.6)
+            return (false, "earlyFinishMinGames");
 
         // Set all 0:0 matches to 8:8
         foreach (var match in tournament.Matches)
@@ -243,8 +260,9 @@ public class TournamentService(PadelDbContext db)
 
         tournament.IsEarlyFinished = true;
         tournament.IsFinished = true;
+        tournament.FinishedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
-        return true;
+        return (true, null);
     }
 
     public async Task<bool> CancelTournament(int tournamentId, int hostPlayerId, bool isAdmin = false)
@@ -260,8 +278,50 @@ public class TournamentService(PadelDbContext db)
 
         tournament.IsCancelled = true;
         tournament.IsFinished = true;
+        tournament.FinishedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<bool> DeleteTournamentPermanent(int tournamentId)
+    {
+        var tournament = await db.Tournaments
+            .Include(t => t.Matches)
+                .ThenInclude(m => m.TeamMatches)
+            .FirstOrDefaultAsync(t => t.Id == tournamentId);
+
+        if (tournament is null) return false;
+
+        // Clear SuperGameTournamentId if referenced
+        var season = await db.Seasons.FirstOrDefaultAsync(s => s.SuperGameTournamentId == tournamentId);
+        if (season is not null)
+            season.SuperGameTournamentId = null;
+
+        // Delete TeamMatches → Matches → Tournament
+        foreach (var match in tournament.Matches)
+        {
+            db.TeamMatches.RemoveRange(match.TeamMatches);
+        }
+        db.Matches.RemoveRange(tournament.Matches);
+        db.Tournaments.Remove(tournament);
+
+        await db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<List<TournamentResult>> GetClubActiveTournaments(int? clubId)
+    {
+        var query = FullTournamentQuery()
+            .Where(t => !t.IsFinished && !t.IsCancelled && t.HostPlayerId != null)
+            .Where(t => t.Matches.Any(m =>
+                m.TeamMatches.Count >= 2 &&
+                m.TeamMatches.All(tm => tm.Team.PlayerTeams.Count >= 2)));
+
+        if (clubId.HasValue)
+            query = query.Where(t => t.ClubId == clubId.Value);
+
+        var tournaments = await query.OrderByDescending(t => t.Date).ToListAsync();
+        return tournaments.Select(TournamentMapper.ToResult).ToList();
     }
 
     private async Task<Team> FindOrCreateTeam(int player1Id, int player2Id)

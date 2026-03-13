@@ -72,7 +72,7 @@ public class AuthService(PadelDbContext db, EmailService emailService)
         {
             UserId = user.Id,
             Token = token,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(30),
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
             IsUsed = false
         };
         db.PasswordResetTokens.Add(resetToken);
@@ -87,7 +87,18 @@ public class AuthService(PadelDbContext db, EmailService emailService)
             .Include(t => t.User)
             .FirstOrDefaultAsync(t => t.Token == token);
 
-        if (resetToken is null || resetToken.IsUsed || resetToken.ExpiresAt < DateTime.UtcNow)
+        if (resetToken is null)
+            return false;
+
+        if (resetToken.IsUsed)
+            return false;
+
+        var now = DateTime.UtcNow;
+        var expiresUtc = resetToken.ExpiresAt.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(resetToken.ExpiresAt, DateTimeKind.Utc)
+            : resetToken.ExpiresAt.ToUniversalTime();
+
+        if (expiresUtc < now)
             return false;
 
         resetToken.User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);

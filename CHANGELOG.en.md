@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.3.0] — 2026-03-13
+
+### Added
+
+- **Feedback form** — the static contact page is now a full feedback form with subject selection (suggestion, bug, other), message field and optional reply email. Messages are sent to the developer's email.
+- **Match and tournament timers** — during gameplay, current match time and total tournament time are displayed. In tournament history, each match shows its duration.
+- **Tournament duration in history** — tournament cards show total duration next to player count (static for finished, live for ongoing).
+- **Tournament filters** — history page now has filter chips for seasonal/friendly, early finished and cancelled tournaments.
+- **Tournament deletion** — admin can permanently delete tournaments from history.
+- **Club game spectating** — the Play page shows active tournaments from other club members with spectator access.
+- **Profile settings** — name change page accessible from the profile.
+- **Auto-cleanup of stale tournaments** — tournaments with no activity for 40+ minutes on the current match are automatically early-finished or cancelled.
+- **Seasons** — future season placeholder cards, countdown to current season end, hide top-3 from leaderboard after super game.
+
+### Improved
+
+- **Rest distribution** — in 5-6 player tournaments, rest periods are spread more evenly so players don't play too many matches in a row.
+- **Team order balancing** — players alternate between first/second position within a team instead of always being in the same order.
+- **Host marked with dot** — the crown emoji next to the host's name is replaced with a subtle gold dot.
+- **Minimum 60% matches for early finish** — cannot finish a tournament early if fewer than 60% of matches have been played.
+- **Avatars in results** — the tournament results table now shows player avatars.
+- **Unfinished tournaments excluded from stats** — only fully completed tournaments count towards rankings and statistics.
+- **Password reset link valid for 1 hour** (was 30 minutes).
+
+### Fixed
+
+- **Removed debug logs** — removed debug Console.WriteLine statements from production code.
+
+---
+
 ## [1.2.1] — 2026-03-04
 
 ### Added

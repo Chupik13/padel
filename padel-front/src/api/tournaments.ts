@@ -1,8 +1,9 @@
-import { apiFetch } from './client';
+import { apiFetch, ApiError } from './client';
 import type { TournamentResult, SaveTournamentRequest, CreateLiveTournamentRequest, UpdateScoreRequest } from '../types/api';
 
-export function getTournaments(): Promise<TournamentResult[]> {
-  return apiFetch<TournamentResult[]>('/api/tournaments');
+export function getTournaments(includeCancelled = false): Promise<TournamentResult[]> {
+  const params = includeCancelled ? '?includeCancelled=true' : '';
+  return apiFetch<TournamentResult[]>(`/api/tournaments${params}`);
 }
 
 export function saveTournament(data: SaveTournamentRequest): Promise<TournamentResult> {
@@ -47,14 +48,31 @@ export function finishTournament(id: number): Promise<void> {
   });
 }
 
-export function earlyFinishTournament(id: number): Promise<void> {
-  return apiFetch<void>(`/api/tournaments/${id}/early-finish`, {
-    method: 'PUT',
-  });
+export async function earlyFinishTournament(id: number): Promise<void> {
+  try {
+    return await apiFetch<void>(`/api/tournaments/${id}/early-finish`, {
+      method: 'PUT',
+    });
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 400) {
+      throw new ApiError(400, 'earlyFinishMinGames');
+    }
+    throw e;
+  }
+}
+
+export function getClubActiveTournaments(): Promise<TournamentResult[]> {
+  return apiFetch<TournamentResult[]>('/api/tournaments/club-active');
 }
 
 export function cancelTournament(id: number): Promise<void> {
   return apiFetch<void>(`/api/tournaments/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export function deleteTournamentPermanent(id: number): Promise<void> {
+  return apiFetch<void>(`/api/tournaments/${id}/permanent`, {
     method: 'DELETE',
   });
 }

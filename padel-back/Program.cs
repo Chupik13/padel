@@ -39,6 +39,7 @@ builder.Services.AddScoped<SeasonService>();
 builder.Services.AddScoped<AvatarService>();
 builder.Services.AddScoped<ClubService>();
 builder.Services.AddHostedService<SeasonBackgroundService>();
+builder.Services.AddHostedService<TournamentAutoCleanupService>();
 builder.Services.AddSignalR();
 
 var app = builder.Build();
@@ -62,6 +63,7 @@ app.MapTournamentEndpoints();
 app.MapPlayerEndpoints();
 app.MapSeasonEndpoints();
 app.MapClubEndpoints();
+app.MapFeedbackEndpoints();
 app.MapHub<TournamentHub>("/hubs/tournament");
 
 app.Run();

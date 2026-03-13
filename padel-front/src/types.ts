@@ -15,6 +15,7 @@ export type Match = {
   resting: number[];
   score1?: number;
   score2?: number;
+  startedAt?: string;
 };
 
 export type Tournament = {

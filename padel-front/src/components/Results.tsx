@@ -135,7 +135,12 @@ export default function Results({ tournament, onRestart, onRematch, inSeason = f
             {sorted.map((st, i) => (
               <tr key={st.player.id} className={ranks[i] === 1 ? 'first-place' : ''}>
                 <td>{ranks[i]}</td>
-                <td>{st.player.name}</td>
+                <td>
+                  <span className="avatar avatar-xs">
+                    {st.player.imageUrl ? <img src={st.player.imageUrl} alt="" /> : <span>{st.player.name[0]}</span>}
+                  </span>
+                  {st.player.name}
+                </td>
                 <td className="points-cell">{st.points}</td>
                 <td>{st.matches}</td>
                 <td>{st.wins}</td>

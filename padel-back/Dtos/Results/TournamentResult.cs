@@ -13,4 +13,5 @@ public class TournamentResult
     public bool IsFinished { get; set; }
     public bool IsEarlyFinished { get; set; }
     public bool IsCancelled { get; set; }
+    public DateTime? FinishedAt { get; set; }
 }

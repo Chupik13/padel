@@ -92,27 +92,41 @@ export default function SeasonsPage() {
       </div>
       {seasons.length === 0 && <p className="subtitle">{t('seasons.noSeasons')}</p>}
       <div className="season-carousel" ref={carouselRef}>
-        {seasons.map((season) => (
+        {seasons.map((season, idx) => {
+          const seasonNumber = seasons.length - idx;
+          const now = new Date();
+          const notStarted = new Date(season.seasonStart) > now;
+          const finished = !season.isCurrent && new Date(season.seasonEnd) <= now;
+
+          if (notStarted) {
+            return (
+              <div key={season.id} className="season-card season-card-placeholder">
+                <div className="season-placeholder-label season-placeholder-future">
+                  <span className="season-placeholder-title">{t('seasons.seasonNumber', { number: seasonNumber })}</span>
+                  <span className="season-placeholder-dates">
+                    {new Date(season.seasonStart).toLocaleDateString(dateFmt)} — {new Date(season.seasonEnd).toLocaleDateString(dateFmt)}
+                  </span>
+                </div>
+              </div>
+            );
+          }
+
+          return (
           <div key={season.id} className={`season-card ${season.isCurrent ? 'season-card-current' : ''}`}>
             <div className="season-card-header">
-              <span className="season-dates">
-                {new Date(season.seasonStart).toLocaleDateString(dateFmt)} —{' '}
-                {new Date(season.seasonEnd).toLocaleDateString(dateFmt)}
-              </span>
-              {season.isCurrent && <span className="season-badge">{t('seasons.current')}</span>}
+              <div className="season-header-stack">
+                <span className={`season-badge ${season.isCurrent ? 'season-badge-current' : 'season-badge-finished'}`}>{t('seasons.seasonNumber', { number: seasonNumber })}</span>
+              </div>
+              {season.isCurrent && (() => {
+                const daysLeft = Math.max(0, Math.ceil((new Date(season.seasonEnd).getTime() - Date.now()) / 86400000));
+                return (
+                  <div className="season-days-left">
+                    <span className="season-days-left-number">{daysLeft}</span>
+                    <span className="season-days-left-label">{t('seasons.daysRemaining')}</span>
+                  </div>
+                );
+              })()}
             </div>
-            <div className="season-card-meta">
-              <span>{t('seasons.gamesRequired', { count: season.requireGamesCount })}</span>
-            </div>
-            {season.isCurrent && (() => {
-              const daysLeft = Math.max(0, Math.ceil((new Date(season.seasonEnd).getTime() - Date.now()) / 86400000));
-              return (
-                <div className="season-countdown">
-                  <span className="season-countdown-number">{daysLeft}</span>
-                  <span className="season-countdown-label">{t('seasons.daysLeft', { count: daysLeft })}</span>
-                </div>
-              );
-            })()}
             {season.superGame?.isFinished && (
               <div className="super-game-podium">
                 <div className="super-game-title">{t('seasons.superGame')}</div>
@@ -158,16 +172,18 @@ export default function SeasonsPage() {
                         if (i < 3) superGameMedals.set(p.player.id, medals[i]);
                       });
                     }
-                    return season.leaderBoard.players.map((p, i) => {
+                    const skipTop3 = season.superGame?.isFinished ? 3 : 0;
+                    return season.leaderBoard.players.slice(skipTop3).map((p, i) => {
+                      const rank = i + skipTop3 + 1;
                       const isSelected = selectedPlayer?.seasonId === season.id && selectedPlayer?.playerId === p.player.id;
                       return (
                         <tr
                           key={p.player.id}
-                          className={`${awaitingSuperGame && i < 4 ? 'super-game-candidate-row' : ''} ${isSelected ? 'selected-player-row' : ''}`}
+                          className={`${awaitingSuperGame && rank <= 4 ? 'super-game-candidate-row' : ''} ${isSelected ? 'selected-player-row' : ''}`}
                           onClick={() => setSelectedPlayer(isSelected ? null : { seasonId: season.id, playerId: p.player.id })}
                           style={{ cursor: 'pointer' }}
                         >
-                          <td>{i + 1}</td>
+                          <td>{rank}</td>
                           <td>
                             <span
                               className="clickable-player"
@@ -205,7 +221,8 @@ export default function SeasonsPage() {
               <div className="season-chart-hint">{t('seasons.tapToSeeChart')}</div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

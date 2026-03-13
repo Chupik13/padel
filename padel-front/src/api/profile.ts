@@ -17,6 +17,13 @@ export function getHeadToHead(login: string): Promise<HeadToHeadResult> {
   return apiFetch<HeadToHeadResult>(`/api/profile/head-to-head/${encodeURIComponent(login)}`);
 }
 
+export function updateName(name: string): Promise<void> {
+  return apiFetch<void>('/api/profile/name', {
+    method: 'PUT',
+    body: JSON.stringify({ name }),
+  });
+}
+
 export function uploadAvatar(file: File): Promise<void> {
   const formData = new FormData();
   formData.append('file', file);

@@ -133,8 +133,8 @@ public class SeasonService(PadelDbContext db, TournamentService tournamentServic
         }
 
         var clubTournaments = clubId.HasValue
-            ? season.Tournaments.Where(t => !t.IsCancelled && t.ClubId == clubId.Value)
-            : season.Tournaments.Where(t => !t.IsCancelled);
+            ? season.Tournaments.Where(t => !t.IsCancelled && t.IsFinished && t.ClubId == clubId.Value)
+            : season.Tournaments.Where(t => !t.IsCancelled && t.IsFinished);
 
         return new SeasonResult
         {
@@ -154,8 +154,8 @@ public class SeasonService(PadelDbContext db, TournamentService tournamentServic
         var playerTournamentAvgs = new Dictionary<int, (Player Player, List<(double Average, DateTime Date)> Entries)>();
 
         var tournaments = clubId.HasValue
-            ? season.Tournaments.Where(t => !t.IsCancelled && t.ClubId == clubId.Value)
-            : season.Tournaments.Where(t => !t.IsCancelled);
+            ? season.Tournaments.Where(t => !t.IsCancelled && t.IsFinished && t.ClubId == clubId.Value)
+            : season.Tournaments.Where(t => !t.IsCancelled && t.IsFinished);
 
         foreach (var tournament in tournaments)
         {

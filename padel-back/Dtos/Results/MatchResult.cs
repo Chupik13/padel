@@ -9,4 +9,5 @@ public class MatchResult
     public PlayerResult TeamTwoPlayer2 { get; set; } = null!;
     public int TeamOneScore { get; set; }
     public int TeamTwoScore { get; set; }
+    public DateTime? StartedAt { get; set; }
 }

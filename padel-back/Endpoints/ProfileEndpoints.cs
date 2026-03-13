@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using padel.Dtos.Requests;
 using padel.Models;
 using padel.Services;
 
@@ -37,6 +38,20 @@ public static class ProfileEndpoints
 
             return Results.Ok();
         }).DisableAntiforgery();
+
+        group.MapPut("/name", async (UpdateNameRequest request, HttpContext httpContext, PadelDbContext db) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Length > 50)
+                return Results.BadRequest();
+
+            var login = httpContext.User.FindFirstValue(ClaimTypes.Name)!;
+            var player = await db.Players.FirstOrDefaultAsync(p => p.Login == login);
+            if (player is null) return Results.NotFound();
+
+            player.Name = request.Name.Trim();
+            await db.SaveChangesAsync();
+            return Results.Ok();
+        });
 
         group.MapGet("/head-to-head/{targetLogin}", async (string targetLogin, HttpContext httpContext, ProfileService profileService) =>
         {

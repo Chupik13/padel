@@ -11,7 +11,8 @@
     "logout": "Logout",
     "rating": "Rating: {{score}}",
     "openMenu": "Open menu",
-    "club": "Club"
+    "club": "Club",
+    "feedback": "Feedback"
   },
   "login": {
     "placeholder_login": "Login",
@@ -68,6 +69,7 @@
     "host": "Host: {{name}}",
     "earlyFinishConfirm": "All unplayed matches will get a score of 8:8. Finish?",
     "earlyFinish": "Finish early",
+    "earlyFinishMinGames": "At least 60% of matches must be played",
     "cancel": "Cancel",
     "counter": "Match {{current}} of {{total}}",
     "team1": "Team 1",
@@ -100,6 +102,7 @@
     "matches": "matches",
     "seasonal": "Seasonal",
     "friendly": "Friendly",
+    "clubGames": "Active club games",
     "newTournament": "New tournament",
     "gameType": "Game type",
     "seasonalDesc": "Results count towards season",
@@ -162,7 +165,9 @@
     "seasonGames": "S.games",
     "seasonPoints": "S.points",
     "seasonAvg": "S.avg.",
-    "noLeaderboard": "No leaderboard data yet"
+    "noLeaderboard": "No leaderboard data yet",
+    "deleteConfirm": "Delete tournament? This action is irreversible.",
+    "deleteBtn": "Delete"
   },
   "seasons": {
     "title": "Seasons",
@@ -178,7 +183,11 @@
     "points": "Points",
     "avg": "Avg.",
     "games": "Games",
+    "finished": "Finished",
+    "seasonNumber": "Season {{number}}",
+    "seasonStarts": "Season {{number}} starts {{date}}",
     "tapToSeeChart": "Tap a player to see chart",
+    "daysRemaining": "days left",
     "daysLeft_one": "day remaining",
     "daysLeft_other": "days remaining"
   },
@@ -233,6 +242,30 @@
     "success": "Password changed successfully",
     "error": "Link is invalid or expired",
     "mismatch": "Passwords don't match"
+  },
+  "settings": {
+    "title": "Settings",
+    "nameLabel": "Name",
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Name updated",
+    "saveError": "Failed to save"
+  },
+  "feedback": {
+    "title": "Feedback",
+    "description": "Contact us with any questions",
+    "subjectLabel": "Subject",
+    "messageLabel": "Message",
+    "emailLabel": "Reply email (optional)",
+    "messagePlaceholder": "Describe your idea or issue...",
+    "emailPlaceholder": "If different from yours",
+    "subjectSuggestion": "Feature suggestion",
+    "subjectBug": "Found a bug",
+    "subjectOther": "Other",
+    "submit": "Send",
+    "sending": "Sending...",
+    "sent": "Message sent!",
+    "sendError": "Failed to send message"
   },
   "common": {
     "back": "Back",

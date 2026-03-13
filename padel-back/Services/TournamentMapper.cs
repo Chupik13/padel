@@ -35,7 +35,8 @@ public static class TournamentMapper
                 TeamTwoPlayer1 = MapPlayer(teamTwoPlayers[0]),
                 TeamTwoPlayer2 = MapPlayer(teamTwoPlayers[1]),
                 TeamOneScore = teamOne.Score,
-                TeamTwoScore = teamTwo.Score
+                TeamTwoScore = teamTwo.Score,
+                StartedAt = match.StartedAt
             };
         }).ToList();
 
@@ -78,7 +79,8 @@ public static class TournamentMapper
             HostPlayerId = tournament.HostPlayerId,
             IsFinished = tournament.IsFinished,
             IsEarlyFinished = tournament.IsEarlyFinished,
-            IsCancelled = tournament.IsCancelled
+            IsCancelled = tournament.IsCancelled,
+            FinishedAt = tournament.FinishedAt
         };
     }
 }

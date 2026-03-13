@@ -31,6 +31,7 @@ export default function SlideMenu({ open, onClose }: Props) {
     { label: t('menu.seasons'), path: '/seasons' },
     { label: t('menu.club'), path: '/club' },
     { label: t('menu.changelog'), path: '/changelog' },
+    { label: t('menu.feedback'), path: '/feedback' },
   ];
 
   return (

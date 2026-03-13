@@ -18,7 +18,7 @@ public static class TournamentEndpoints
     {
         var group = app.MapGroup("/api/tournaments").RequireAuthorization();
 
-        group.MapGet("/", async (int? seasonId, int? playerId, bool? isBalanced, bool? inSeason, TournamentService tournamentService, HttpContext httpContext, PadelDbContext db) =>
+        group.MapGet("/", async (int? seasonId, int? playerId, bool? isBalanced, bool? inSeason, bool? includeCancelled, TournamentService tournamentService, HttpContext httpContext, PadelDbContext db) =>
         {
             var clubId = await EndpointHelpers.GetPlayerClubId(httpContext, db);
             var request = new GetTournamentsRequest
@@ -27,7 +27,8 @@ public static class TournamentEndpoints
                 PlayerId = playerId,
                 IsBalanced = isBalanced,
                 InSeason = inSeason,
-                ClubId = clubId
+                ClubId = clubId,
+                IncludeCancelled = includeCancelled
             };
             var result = await tournamentService.GetTournaments(request);
             return Results.Ok(result);
@@ -49,6 +50,13 @@ public static class TournamentEndpoints
             var clubId = await EndpointHelpers.GetPlayerClubId(httpContext, db);
             var result = await tournamentService.CreateLiveTournament(playerId, request, clubId);
             return Results.Created($"/api/tournaments/{result.Id}", result);
+        });
+
+        group.MapGet("/club-active", async (TournamentService tournamentService, HttpContext httpContext, PadelDbContext db) =>
+        {
+            var clubId = await EndpointHelpers.GetPlayerClubId(httpContext, db);
+            var result = await tournamentService.GetClubActiveTournaments(clubId);
+            return Results.Ok(result);
         });
 
         group.MapGet("/active", async (TournamentService tournamentService, HttpContext httpContext) =>
@@ -128,13 +136,26 @@ public static class TournamentEndpoints
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
                 return Results.Unauthorized();
 
-            var success = await tournamentService.EarlyFinishTournament(id, playerId, IsAdmin(httpContext));
+            var (success, error) = await tournamentService.EarlyFinishTournament(id, playerId, IsAdmin(httpContext));
             if (!success)
+            {
+                if (error == "earlyFinishMinGames")
+                    return Results.BadRequest(new { error = "earlyFinishMinGames" });
                 return Results.Forbid();
+            }
 
             await hub.Clients.Group($"tournament-{id}").SendAsync("TournamentFinished", id);
 
             return Results.Ok();
+        });
+
+        group.MapDelete("/{id}/permanent", async (int id, TournamentService tournamentService, HttpContext httpContext) =>
+        {
+            if (!IsAdmin(httpContext))
+                return Results.Forbid();
+
+            var success = await tournamentService.DeleteTournamentPermanent(id);
+            return success ? Results.NoContent() : Results.NotFound();
         });
 
         group.MapDelete("/{id}", async (int id, TournamentService tournamentService,

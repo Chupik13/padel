@@ -7,4 +7,5 @@ public class Match
     public Tournament Tournament { get; set; } = null!;
     public List<TeamMatch> TeamMatches { get; set; } = [];
     public int MatchOrder { get; set; }
+    public DateTime? StartedAt { get; set; }
 }

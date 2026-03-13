@@ -5,7 +5,7 @@ import type { PlayerResult, TournamentResult } from '../types/api';
 import { generateSchedule, generateFixedSchedule } from '../utils/scheduler';
 import { saveTournament as saveLocal, loadTournament, clearTournament } from '../utils/storage';
 import { getSeasons } from '../api/seasons';
-import { createLiveTournament, getUnfinishedTournaments, updateMatchScore, navigateMatch, finishTournament, earlyFinishTournament, cancelTournament } from '../api/tournaments';
+import { createLiveTournament, getUnfinishedTournaments, getClubActiveTournaments, updateMatchScore, navigateMatch, finishTournament, earlyFinishTournament, cancelTournament } from '../api/tournaments';
 import { useAuth } from '../context/AuthContext';
 import { useTournamentHub } from '../hooks/useTournamentHub';
 import PlayerCountSelect from '../components/PlayerCountSelect';
@@ -38,6 +38,7 @@ function tournamentResultToLocal(result: TournamentResult): Tournament {
       resting,
       score1: m.teamOneScore || undefined,
       score2: m.teamTwoScore || undefined,
+      startedAt: m.startedAt,
     };
   });
 
@@ -77,6 +78,7 @@ export default function PlayPage() {
   const [isHost, setIsHost] = useState(false);
   const [hostName, setHostName] = useState<string | undefined>();
   const [unfinishedList, setUnfinishedList] = useState<TournamentResult[]>([]);
+  const [clubActiveList, setClubActiveList] = useState<TournamentResult[]>([]);
 
   const isAdmin = user?.login === ADMIN_LOGIN;
 
@@ -96,7 +98,11 @@ export default function PlayPage() {
     onMatchNavigated: (_tournamentId, matchIndex) => {
       setTournament((prev) => {
         if (!prev) return prev;
-        return { ...prev, currentMatchIndex: matchIndex };
+        const matches = [...prev.matches];
+        if (matches[matchIndex] && !matches[matchIndex].startedAt) {
+          matches[matchIndex] = { ...matches[matchIndex], startedAt: new Date().toISOString() };
+        }
+        return { ...prev, matches, currentMatchIndex: matchIndex };
       });
     },
     onTournamentFinished: () => {
@@ -132,7 +138,18 @@ export default function PlayPage() {
       }
       // Host (or admin) unfinished tournaments
       const hostList = isAdmin ? list : list.filter((t) => t.hostPlayerId === user?.id);
-      if (hostList.length > 0) {
+
+      // Load club active tournaments (for spectator view)
+      let clubActive: TournamentResult[] = [];
+      try {
+        const allClubActive = await getClubActiveTournaments();
+        // Exclude tournaments the user is already involved in
+        const myIds = new Set(list.map((t) => t.id));
+        clubActive = allClubActive.filter((t) => !myIds.has(t.id));
+      } catch { /* ignore */ }
+      setClubActiveList(clubActive);
+
+      if (hostList.length > 0 || clubActive.length > 0) {
         setUnfinishedList(hostList);
         setScreen('unfinished');
         return;
@@ -238,9 +255,10 @@ export default function PlayPage() {
         })),
       });
 
+      const now = new Date().toISOString();
       const tr: Tournament = {
         players: localPlayers,
-        matches,
+        matches: matches.map((m, i) => ({ ...m, startedAt: i === 0 ? now : undefined })),
         currentMatchIndex: 0,
         format,
         id: result.id,
@@ -254,7 +272,8 @@ export default function PlayPage() {
       setScreen('match');
     } catch {
       // Fallback to local-only mode
-      const tr: Tournament = { players: localPlayers, matches, currentMatchIndex: 0, format };
+      const now = new Date().toISOString();
+      const tr: Tournament = { players: localPlayers, matches: matches.map((m, i) => ({ ...m, startedAt: i === 0 ? now : undefined })), currentMatchIndex: 0, format };
       setTournament(tr);
       saveLocal(tr);
       setInSeason(seasonal);
@@ -288,7 +307,11 @@ export default function PlayPage() {
     setTournament((prev) => {
       if (!prev) return prev;
       const newIndex = prev.currentMatchIndex + 1;
-      const updated = { ...prev, currentMatchIndex: newIndex };
+      const matches = [...prev.matches];
+      if (matches[newIndex] && !matches[newIndex].startedAt) {
+        matches[newIndex] = { ...matches[newIndex], startedAt: new Date().toISOString() };
+      }
+      const updated = { ...prev, matches, currentMatchIndex: newIndex };
       if (!prev.id) saveLocal(updated);
       if (prev.id && isHost) {
         navigateMatch(prev.id, newIndex).catch(() => {});
@@ -321,12 +344,19 @@ export default function PlayPage() {
     setScreen('results');
   }, [tournament?.id, isHost]);
 
+  const [earlyFinishError, setEarlyFinishError] = useState('');
+
   const handleEarlyFinish = useCallback(async () => {
     if (!tournament?.id) return;
+    setEarlyFinishError('');
     try {
       await earlyFinishTournament(tournament.id);
-    } catch {
-      // continue anyway
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'earlyFinishMinGames') {
+        setEarlyFinishError(t('match.earlyFinishMinGames'));
+        return;
+      }
+      // continue anyway for other errors
     }
     // Update local state: all 0:0 matches → 8:8
     setTournament((prev) => {
@@ -343,7 +373,7 @@ export default function PlayPage() {
       return updated;
     });
     setScreen('results');
-  }, [tournament?.id]);
+  }, [tournament?.id, t]);
 
   const handleCancel = useCallback(async () => {
     if (tournament?.id) {
@@ -451,6 +481,34 @@ export default function PlayPage() {
               );
             })}
           </div>
+          {clubActiveList.length > 0 && (
+            <div className="club-games-section">
+              <div className="club-games-title">{t('play.clubGames')}</div>
+              <div className="tournament-list">
+                {clubActiveList.map((tr) => {
+                  const clubPlayers = getPlayersFromResult(tr);
+                  const clubPlayed = tr.matches.filter((m) => m.teamOneScore > 0 || m.teamTwoScore > 0).length;
+                  return (
+                    <div key={tr.id} className="tournament-card" onClick={() => enterTournament(tr)} style={{ cursor: 'pointer' }}>
+                      <div className="tournament-card-header">
+                        <div className="tournament-card-info">
+                          <span className="tournament-date">
+                            {new Date(tr.date).toLocaleDateString(dateFmt)}
+                          </span>
+                          <span className="tournament-players">
+                            {clubPlayers.length} {t('play.players')} · {clubPlayed}/{tr.matches.length} {t('play.matches')}
+                          </span>
+                        </div>
+                        <div className="tournament-tags">
+                          <span className="tag tag-muted">{t('match.spectator')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <button
             className="btn btn-primary"
             style={{ marginTop: 16, flex: 'none' }}
@@ -518,6 +576,7 @@ export default function PlayPage() {
           onEarlyFinish={isHost && !inSeason ? handleEarlyFinish : undefined}
           readOnly={!!tournament.id && !isHost}
           hostName={hostName}
+          earlyFinishError={earlyFinishError}
         />
       )}
 

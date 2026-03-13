@@ -1239,7 +1239,7 @@ html, body {
 
 .season-card-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
 }
@@ -1250,14 +1250,16 @@ html, body {
 }
 
 .season-badge {
+  font-size: 1.15rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+
+.season-badge-current {
   background: var(--accent);
   color: #fff;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 20px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
 }
 
 .season-card-meta {
@@ -1337,26 +1339,24 @@ html, body {
   white-space: nowrap;
 }
 
-/* Season countdown */
-.season-countdown {
+/* Season days-left — compact top-right */
+.season-days-left {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 8px 14px;
-  background: rgba(14, 165, 115, 0.1);
-  border: 1px solid rgba(14, 165, 115, 0.2);
-  border-radius: 8px;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
 }
 
-.season-countdown-number {
-  font-size: 1.4rem;
+.season-days-left-number {
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--accent);
 }
 
-.season-countdown-label {
-  font-size: 0.85rem;
+.season-days-left-label {
+  font-size: 0.7rem;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .selected-player-row td {
@@ -1984,4 +1984,190 @@ html, body {
   z-index: 100;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   line-height: 1.4;
+}
+
+/* Host badge — small colored dot */
+.host-badge {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* Season badge — unified larger label */
+.season-badge-finished {
+  background: var(--bg-input);
+  color: var(--text-muted);
+}
+
+.season-header-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.season-header-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Season placeholder card — empty seasons (future or no data) */
+.season-card-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+}
+
+.season-placeholder-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px;
+  text-align: center;
+}
+
+.season-placeholder-title {
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font-size: 1.15rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+
+.season-placeholder-dates {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Feedback page */
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a0a0b0' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+}
+
+.feedback-textarea {
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+}
+
+/* Match & tournament timers */
+.match-timer {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: -4px;
+  margin-bottom: 4px;
+}
+
+.timer-tournament {
+  opacity: 0.6;
+}
+
+.timer-match {
+  color: var(--accent);
+}
+
+/* Tournament duration in history */
+.tournament-duration {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+
+.match-duration {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  text-align: center;
+}
+
+/* Tournament filter chips */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.filter-chip {
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.filter-chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* Club active tournaments section */
+.club-games-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.club-games-title {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* Settings page */
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+  margin-top: 12px;
+}
+
+.settings-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.settings-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.success {
+  color: var(--accent);
+  font-size: 0.9rem;
 }
