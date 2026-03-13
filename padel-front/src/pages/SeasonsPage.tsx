@@ -96,7 +96,6 @@ export default function SeasonsPage() {
           const seasonNumber = seasons.length - idx;
           const now = new Date();
           const notStarted = new Date(season.seasonStart) > now;
-          const _finished = !season.isCurrent && new Date(season.seasonEnd) <= now;
 
           if (notStarted) {
             return (
