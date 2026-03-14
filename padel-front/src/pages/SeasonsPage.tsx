@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import type { SeasonResult } from '../types/api';
 import { getSeasons, createSuperGame } from '../api/seasons';
 import { useAuth } from '../context/AuthContext';
-import InfoTip from '../components/InfoTip';
 import ScoreChart from '../components/ScoreChart';
 import { generateFixedSchedule } from '../utils/scheduler';
 

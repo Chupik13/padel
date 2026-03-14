@@ -16,7 +16,7 @@ export default function TournamentsPage() {
   const [showEarlyFinished, setShowEarlyFinished] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const navigate = useNavigate();
-  const { user, miniProfile } = useAuth();
+  const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const dateFmt = i18n.language === 'ru' ? 'ru-RU' : 'en-US';
 
