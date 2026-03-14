@@ -77,10 +77,10 @@ export default function SettingsPage() {
 
         {error && <p className="error">{error}</p>}
         {saved && <p className="success">{t('settings.saved')}</p>}
-        <button className="btn btn-primary" onClick={handleSave} disabled={saving || !name.trim()}>
+      </div>
+        <button style={{marginTop: 'auto', marginBottom: 10, maxHeight: 44}} className="btn btn-primary" onClick={handleSave} disabled={saving || !name.trim()}>
           {saving ? t('settings.saving') : t('settings.save')}
         </button>
-      </div>
     </div>
   );
 }

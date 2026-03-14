@@ -13,6 +13,7 @@ public class ClubService(PadelDbContext db)
             {
                 Id = c.Id,
                 Name = c.Name,
+                ImageUrl = c.ImageUrl,
                 MemberCount = c.PlayerClubs.Count
             })
             .ToListAsync();
@@ -29,6 +30,7 @@ public class ClubService(PadelDbContext db)
             {
                 Id = pc.Club.Id,
                 Name = pc.Club.Name,
+                ImageUrl = pc.Club.ImageUrl,
                 MemberCount = pc.Club.PlayerClubs.Count,
                 IsPrimary = pc.ClubId == player.ClubId
             })
@@ -61,6 +63,7 @@ public class ClubService(PadelDbContext db)
         {
             Id = club.Id,
             Name = club.Name,
+            ImageUrl = club.ImageUrl,
             MemberCount = 1,
             IsPrimary = true
         };

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.0] — 2026-03-15
+
+### Added
+
+- **7-player support** — the game now supports 4, 5, 6 and 7 players.
+  - Seasonal: 21 matches (balanced, k=2).
+  - Friendly: 7 (fixed), 14 (fixed), or 21 (balanced) matches.
+  - Each match: 4 play, 3 rest.
+
+### Improved
+
+- **In-game navigation** — prev/next buttons are hidden on the "Tournament" tab, shown only on the "Match" tab.
+
+---
+
 ## [1.3.1] — 2026-03-13
 
 ### Added

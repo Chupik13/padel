@@ -147,7 +147,7 @@ public class ProfileService(PadelDbContext db)
 
         var clubs = await db.PlayerClubs
             .Where(pc => pc.PlayerId == player.Id)
-            .Select(pc => new ClubMiniResult { Id = pc.ClubId, Name = pc.Club.Name })
+            .Select(pc => new ClubMiniResult { Id = pc.ClubId, Name = pc.Club.Name, ImageUrl = pc.Club.ImageUrl })
             .ToListAsync();
 
         return new ProfileMiniResult

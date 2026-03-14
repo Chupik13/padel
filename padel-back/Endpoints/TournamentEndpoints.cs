@@ -19,18 +19,26 @@ public static class TournamentEndpoints
     {
         var group = app.MapGroup("/api/tournaments").RequireAuthorization();
 
-        group.MapGet("/", async (int? seasonId, int? playerId, bool? isBalanced, bool? inSeason, bool? includeCancelled, TournamentService tournamentService, HttpContext httpContext, PadelDbContext db) =>
+        group.MapGet("/", async (int? seasonId, int? playerId, bool? isBalanced, bool? inSeason, bool? includeCancelled, int? clubId, TournamentService tournamentService, HttpContext httpContext, PadelDbContext db) =>
         {
-            var clubId = await EndpointHelpers.GetPlayerClubId(httpContext, db);
             var request = new GetTournamentsRequest
             {
                 SeasonId = seasonId,
                 PlayerId = playerId,
                 IsBalanced = isBalanced,
                 InSeason = inSeason,
-                ClubId = clubId,
                 IncludeCancelled = includeCancelled
             };
+
+            if (clubId.HasValue)
+            {
+                request.ClubId = clubId;
+            }
+            else
+            {
+                request.ClubIds = await EndpointHelpers.GetPlayerClubIds(httpContext, db);
+            }
+
             var result = await tournamentService.GetTournaments(request);
             return Results.Ok(result);
         });

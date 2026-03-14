@@ -5,7 +5,7 @@ import { getPlayers } from '../api/players';
 import type { PlayerResult } from '../types/api';
 
 const MIN_PLAYERS = 4;
-const MAX_PLAYERS = 6;
+const MAX_PLAYERS = 7;
 
 interface Props {
   clubId?: number;

@@ -18,6 +18,7 @@ public class TournamentService(PadelDbContext db)
     public async Task<List<TournamentResult>> GetTournaments(GetTournamentsRequest request)
     {
         var query = db.Tournaments
+            .Include(t => t.Club)
             .Include(t => t.Matches)
                 .ThenInclude(m => m.TeamMatches)
                     .ThenInclude(tm => tm.Team)
@@ -38,6 +39,8 @@ public class TournamentService(PadelDbContext db)
 
         if (request.ClubId.HasValue)
             query = query.Where(t => t.ClubId == request.ClubId.Value);
+        else if (request.ClubIds is { Count: > 0 })
+            query = query.Where(t => t.ClubId.HasValue && request.ClubIds.Contains(t.ClubId.Value));
 
         if (request.IncludeCancelled != true)
             query = query.Where(t => !t.IsCancelled);

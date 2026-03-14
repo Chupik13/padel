@@ -1,9 +1,12 @@
 import { apiFetch, ApiError } from './client';
 import type { TournamentResult, SaveTournamentRequest, CreateLiveTournamentRequest, UpdateScoreRequest } from '../types/api';
 
-export function getTournaments(includeCancelled = false): Promise<TournamentResult[]> {
-  const params = includeCancelled ? '?includeCancelled=true' : '';
-  return apiFetch<TournamentResult[]>(`/api/tournaments${params}`);
+export function getTournaments(includeCancelled = false, clubId?: number): Promise<TournamentResult[]> {
+  const params = new URLSearchParams();
+  if (includeCancelled) params.set('includeCancelled', 'true');
+  if (clubId !== undefined) params.set('clubId', String(clubId));
+  const qs = params.toString();
+  return apiFetch<TournamentResult[]>(`/api/tournaments${qs ? `?${qs}` : ''}`);
 }
 
 export function saveTournament(data: SaveTournamentRequest): Promise<TournamentResult> {

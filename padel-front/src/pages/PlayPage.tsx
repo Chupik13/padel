@@ -21,6 +21,7 @@ type PlayScreen = 'loading' | 'unfinished' | 'no-club' | 'select-club' | 'season
 function getSeasonalFormat(playerCount: number): FormatOption {
   if (playerCount === 4) return { label: '', matchCount: 9, generationMode: 'balanced', k: 3 };
   if (playerCount === 5) return { label: '', matchCount: 10, generationMode: 'balanced', k: 2 };
+  if (playerCount === 7) return { label: '', matchCount: 21, generationMode: 'balanced', k: 2 };
   return { label: '', matchCount: 15, generationMode: 'balanced', k: 2 };
 }
 
@@ -300,6 +301,7 @@ export default function PlayPage() {
       setScreen('match');
     } catch {
       const now = new Date().toISOString();
+
       const fmt: TournamentFormat | undefined = opt.generationMode === 'balanced' ? 'balanced' : undefined;
       const tr: Tournament = { players: localPlayers, matches: matches.map((m, i) => ({ ...m, startedAt: i === 0 ? now : undefined })), currentMatchIndex: 0, format: fmt };
       setTournament(tr);
@@ -530,7 +532,7 @@ export default function PlayPage() {
           )}
           <button
             className="btn btn-primary"
-            style={{ marginTop: 16, flex: 'none' }}
+            style={{ marginTop: 'auto', marginBottom: 10, flex: 'none' }}
             onClick={goToFirstScreen}
           >
             {t('play.newTournament')}
@@ -547,12 +549,16 @@ export default function PlayPage() {
 
       {screen === 'select-club' && (
         <div className="screen center-content">
-          <h1 className="title">{t('app.title')}</h1>
-          <p className="subtitle">{t('play.selectClub')}</p>
+          <h1 className="title" style={{margin: 10}}>{t('app.title')}</h1>
           <div className="card-buttons">
             {clubs.map((c) => (
-              <button key={c.id} className="card-button" onClick={() => handleSelectClub(c.id, c.name)}>
-                <span className="card-button-number">{c.name[0]}</span>
+              <button
+                key={c.id}
+                className={`card-button${c.imageUrl ? ' card-button-cover' : ''}`}
+                onClick={() => handleSelectClub(c.id, c.name)}
+              >
+                {c.imageUrl && <img className="card-button-bg" src={c.imageUrl} alt="" />}
+                {!c.imageUrl && <span className="card-button-number">{c.name[0].toUpperCase()}</span>}
                 <span className="card-button-label">{c.name}</span>
               </button>
             ))}
@@ -561,12 +567,20 @@ export default function PlayPage() {
       )}
 
       {screen === 'season-toggle' && (
-        <div className="screen center-content">
-          <h1 className="title">{t('app.title')}</h1>
-          {selectedClubName && <p className="play-club-name">{selectedClubName}</p>}
+          <div className="screen center-content">
+          <div className="wordmark" style={{fontSize: 40, margin: 30}}>
+          <span className="letter-G">G</span>
+          <span className="letter-e">e</span>
+          <span className="letter-o1">o</span>
+          <span className="letter-r">r</span>
+          <span className="letter-g">g</span>
+          <span className="letter-i">i</span>
+          <span className="letter-a">a</span>
+          <span className="letter-n">n</span>
+          <span className="letter-o2">o</span>{selectedClubName && <span className="title-club-name">{selectedClubName}</span>}
+          </div>
+
           <div className="title-row">
-            <h2 className="screen-title">{t('play.gameType')}</h2>
-            <InfoTip text={t('play.gameType_hint')} />
           </div>
           <div className="season-toggle-options">
             {hasActiveSeason && (

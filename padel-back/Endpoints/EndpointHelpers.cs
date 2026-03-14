@@ -23,4 +23,16 @@ public static class EndpointHelpers
             return null;
         return playerId;
     }
+
+    public static async Task<List<int>> GetPlayerClubIds(HttpContext httpContext, PadelDbContext db)
+    {
+        var playerIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
+            return [];
+
+        return await db.PlayerClubs
+            .Where(pc => pc.PlayerId == playerId)
+            .Select(pc => pc.ClubId)
+            .ToListAsync();
+    }
 }

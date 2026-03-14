@@ -14,4 +14,7 @@ public class TournamentResult
     public bool IsEarlyFinished { get; set; }
     public bool IsCancelled { get; set; }
     public DateTime? FinishedAt { get; set; }
+    public int? ClubId { get; set; }
+    public string? ClubName { get; set; }
+    public string? ClubImageUrl { get; set; }
 }

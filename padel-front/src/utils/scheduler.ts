@@ -25,6 +25,7 @@ function targetK(n: number): number {
   if (n === 4) return 1;
   if (n === 5) return 1;
   if (n === 6) return 2;
+  if (n === 7) return 2;
   return 1;
 }
 

@@ -11,6 +11,7 @@ export interface UserResult {
 export interface ClubMiniResult {
   id: number;
   name: string;
+  imageUrl: string | null;
 }
 
 export interface ProfileMiniResult {
@@ -24,6 +25,7 @@ export interface ProfileMiniResult {
 export interface ClubResult {
   id: number;
   name: string;
+  imageUrl: string | null;
   memberCount: number;
   isPrimary: boolean;
 }
@@ -83,6 +85,9 @@ export interface TournamentResult {
   isEarlyFinished: boolean;
   isCancelled: boolean;
   finishedAt?: string;
+  clubId: number | null;
+  clubName: string | null;
+  clubImageUrl: string | null;
 }
 
 export interface SuperGameResult {

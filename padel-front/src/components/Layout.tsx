@@ -19,7 +19,17 @@ export default function Layout() {
         <button className="hamburger" onClick={() => setMenuOpen(true)} aria-label={t('menu.openMenu')}>
           <span /><span /><span />
         </button>
-        <span className="layout-title">{t('app.title')}</span>
+        <div className="wordmark">
+            <span className="letter-G">G</span>
+            <span className="letter-e">e</span>
+            <span className="letter-o1">o</span>
+            <span className="letter-r">r</span>
+            <span className="letter-g">g</span>
+            <span className="letter-i">i</span>
+            <span className="letter-a">a</span>
+            <span className="letter-n">n</span>
+            <span className="letter-o2">o</span>
+        </div>
         <button className="lang-toggle" onClick={toggleLang}>
           {i18n.language === 'ru' ? 'EN' : 'RU'}
         </button>

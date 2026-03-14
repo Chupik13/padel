@@ -7,5 +7,6 @@ public class GetTournamentsRequest
     public bool? IsBalanced { get; set; }
     public bool? InSeason { get; set; }
     public int? ClubId { get; set; }
+    public List<int>? ClubIds { get; set; }
     public bool? IncludeCancelled { get; set; }
 }

@@ -87,8 +87,6 @@ export default function SeasonsPage() {
   return (
     <div className="screen">
       <div className="title-row">
-        <h2 className="screen-title">{t('seasons.title')}</h2>
-        <InfoTip text={t('seasons.title_hint')} />
       </div>
       {seasons.length === 0 && <p className="subtitle">{t('seasons.noSeasons')}</p>}
       <div className="season-carousel" ref={carouselRef}>
@@ -103,7 +101,7 @@ export default function SeasonsPage() {
                 <div className="season-placeholder-label season-placeholder-future">
                   <span className="season-placeholder-title">{t('seasons.seasonNumber', { number: seasonNumber })}</span>
                   <span className="season-placeholder-dates">
-                    {new Date(season.seasonStart).toLocaleDateString(dateFmt)} — {new Date(season.seasonEnd).toLocaleDateString(dateFmt)}
+                    {t('seasons.startsOn', { date: new Date(season.seasonStart).toLocaleDateString(dateFmt, { day: 'numeric', month: 'long' }) })}
                   </span>
                 </div>
               </div>

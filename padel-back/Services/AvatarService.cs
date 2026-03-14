@@ -32,6 +32,29 @@ public class AvatarService(IWebHostEnvironment env)
         return $"/avatars/{fileName}";
     }
 
+    public async Task<string> ProcessAndSaveClubAvatar(Stream inputStream, int clubId)
+    {
+        Directory.CreateDirectory(AvatarsDir);
+
+        foreach (var oldFile in Directory.GetFiles(AvatarsDir, $"club_{clubId}.*"))
+            File.Delete(oldFile);
+
+        using var image = await Image.LoadAsync(inputStream);
+
+        image.Mutate(x => x.Resize(new ResizeOptions
+        {
+            Size = new Size(256, 256),
+            Mode = ResizeMode.Crop
+        }));
+
+        var fileName = $"club_{clubId}.webp";
+        var filePath = Path.Combine(AvatarsDir, fileName);
+
+        await image.SaveAsWebpAsync(filePath, new WebpEncoder { Quality = 80 });
+
+        return $"/avatars/{fileName}";
+    }
+
     public async Task MigrateExistingAvatars(IServiceProvider serviceProvider)
     {
         if (!Directory.Exists(AvatarsDir)) return;

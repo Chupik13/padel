@@ -73,15 +73,15 @@ export default function FeedbackPage() {
         {status === 'error' && <p className="error">{t('feedback.sendError')}</p>}
         {status === 'sent' && <p className="success">{t('feedback.sent')}</p>}
 
+      </div>
         <button
           className="btn btn-primary"
-          style={{ marginTop: 12 }}
+          style={{ marginTop: 'auto', marginBottom: 10, maxHeight: 48 }}
           onClick={handleSubmit}
           disabled={status === 'sending' || !message.trim()}
         >
           {status === 'sending' ? t('feedback.sending') : t('feedback.submit')}
         </button>
-      </div>
     </div>
   );
 }

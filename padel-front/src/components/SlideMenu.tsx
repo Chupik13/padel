@@ -39,19 +39,27 @@ export default function SlideMenu({ open, onClose }: Props) {
       <div className={`slide-menu-overlay ${open ? 'open' : ''}`} onClick={onClose} />
       <nav className={`slide-menu ${open ? 'open' : ''}`}>
         <div className="slide-menu-header">
-          <div className="avatar avatar-lg">
-            {user?.imageUrl ? (
-              <img src={user.imageUrl} alt={user.name} />
-            ) : (
-              <span>{(miniProfile?.name ?? user?.name ?? '?')[0].toUpperCase()}</span>
-            )}
+          <div className="slide-menu-header-top">
+            <div className="avatar avatar-lg">
+              {user?.imageUrl ? (
+                <img src={user.imageUrl} alt={user.name} />
+              ) : (
+                <span>{(miniProfile?.name ?? user?.name ?? '?')[0].toUpperCase()}</span>
+              )}
+            </div>
+            <div className="slide-menu-user-name">{miniProfile?.name ?? user?.name}</div>
           </div>
-          <div className="slide-menu-user-name">{miniProfile?.name ?? user?.name}</div>
-          {miniProfile && miniProfile.seasonScore > 0 && (
-            <div className="slide-menu-rating">{t('menu.rating', { score: miniProfile.seasonScore.toFixed(1) })}</div>
-          )}
-          {miniProfile?.clubName && (
-            <div className="slide-menu-club">{miniProfile.clubName}</div>
+          {(miniProfile?.clubName || (miniProfile && miniProfile.seasonScore > 0)) && (
+            <div className="slide-menu-meta">
+              {miniProfile?.clubName && (
+                <div className="slide-menu-club">
+                  {miniProfile.clubName}
+                </div>
+              )}
+              {miniProfile && miniProfile.seasonScore > 0 && (
+                <div className="slide-menu-rating">{t('menu.rating', { score: miniProfile.seasonScore.toFixed(1) })}</div>
+              )}
+            </div>
           )}
         </div>
         <div className="slide-menu-nav">

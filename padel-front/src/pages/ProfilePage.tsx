@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import type { ProfileResult, TournamentResult, SeasonStatisticResult } from '../types/api';
 import { getProfile, getProfileByLogin, uploadAvatar } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
-import InfoTip from '../components/InfoTip';
 import PartnerStats from '../components/PartnerStats';
 import HeadToHead from '../components/HeadToHead';
 
@@ -70,6 +69,11 @@ export default function ProfilePage() {
         </button>
       )}
       <div className="profile-header">
+        {isOwn && (
+          <button className="settings-btn profile-settings-btn" onClick={() => navigate('/settings')} title={t('settings.title')}>
+            ⚙️
+          </button>
+        )}
         <div className={`avatar avatar-xl ${isOwn ? 'avatar-editable' : ''}`} onClick={handleAvatarClick}>
           {profile.imageUrl ? (
             <img src={profile.imageUrl} alt={profile.name} />
@@ -79,15 +83,7 @@ export default function ProfilePage() {
           {isOwn && <div className="avatar-edit-overlay">{t('profile.edit')}</div>}
         </div>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
-        <div className="title-row">
-          <h2 className="profile-name">{profile.name}</h2>
-          {isOwn && (
-            <button className="settings-btn" onClick={() => navigate('/settings')} title={t('settings.title')}>
-              ⚙️
-            </button>
-          )}
-          {isOwn && <InfoTip text={t('profile.title_hint')} />}
-        </div>
+        <h2 className="profile-name">{profile.name}</h2>
       </div>
 
       {!isOwn && login && <HeadToHead targetLogin={login} />}

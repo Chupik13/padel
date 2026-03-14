@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { getClubs, getClubMembers, joinClub, createClub, leaveClub, setPrimaryClub } from '../api/clubs';
+import { getClubs, getClubMembers, joinClub, createClub, leaveClub, setPrimaryClub, uploadClubAvatar } from '../api/clubs';
 import { getGlobalLeaderboard } from '../api/players';
 import type { ClubResult, PlayerResult, GlobalPlayerStats } from '../types/api';
 import InfoTip from '../components/InfoTip';
@@ -39,8 +39,21 @@ export default function ClubSelectPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [showJoinConfirm, setShowJoinConfirm] = useState(false);
 
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
   const myClubIds = new Set(miniProfile?.clubs?.map((c) => c.id) ?? []);
   const primaryClubId = miniProfile?.clubId ?? null;
+
+  const handleAvatarUpload = async (clubId: number, file: File) => {
+    setError('');
+    try {
+      await uploadClubAvatar(clubId, file);
+      const updated = await getClubs();
+      setClubs(updated);
+    } catch {
+      setError(t('club.avatarError'));
+    }
+  };
 
   // Load clubs list
   useEffect(() => {
@@ -168,14 +181,35 @@ export default function ClubSelectPage() {
     const isPrimary = primaryClubId === selectedClubId;
 
     return (
-      <div className="screen club-page">
+      <div className="screen club-page" style={{gap: 32}}>
         <button className="btn-back" onClick={() => { setSelectedClubId(null); setShowMenu(false); setError(''); }}>
           ← {t('club.allClubs')}
         </button>
         <div className="club-header">
           <div className="club-title-row">
+            <div
+              className={`avatar avatar-lg${isMember ? ' avatar-editable' : ''}`}
+              onClick={() => isMember && avatarInputRef.current?.click()}
+            >
+              {selectedClub?.imageUrl ? (
+                <img src={selectedClub.imageUrl} alt={selectedClub.name} />
+              ) : (
+                <span>{(selectedClub?.name ?? '?')[0].toUpperCase()}</span>
+              )}
+              {isMember && <div className="avatar-edit-overlay">{t('profile.edit')}</div>}
+            </div>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file && selectedClubId !== null) handleAvatarUpload(selectedClubId, file);
+                e.target.value = '';
+              }}
+            />
             <h2 className="screen-title">{selectedClub?.name ?? '...'}</h2>
-            <InfoTip text={t('club.detail_hint')} />
             {isMember && (
               <div className="club-menu-wrapper">
                 <button className="club-menu-btn" onClick={() => setShowMenu((v) => !v)}>&#9662;</button>
@@ -204,12 +238,6 @@ export default function ClubSelectPage() {
               </div>
             )}
           </div>
-          <span className="club-member-count">
-            {t('club.members', { count: selectedClub?.memberCount ?? detailMembers.length })}
-          </span>
-          {isMember && isPrimary && (
-            <span className="club-primary-label">{t('club.primary')}</span>
-          )}
         </div>
 
         {error && <p className="error">{error}</p>}
@@ -317,15 +345,20 @@ export default function ClubSelectPage() {
                 className={`club-card club-card-mine${club.id === primaryClubId ? ' club-card-primary' : ''}`}
                 onClick={() => setSelectedClubId(club.id)}
               >
-                <span className="club-card-name">
-                  {club.name}
-                  {club.id === primaryClubId && (
-                    <span className="club-badge primary">{t('club.primary')}</span>
-                  )}
-                </span>
-                <span className="club-card-members">
-                  {t('club.members', { count: club.memberCount })}
-                </span>
+                <div className="avatar avatar-sm">
+                  {club.imageUrl ? <img src={club.imageUrl} alt="" /> : <span>{club.name[0].toUpperCase()}</span>}
+                </div>
+                <div className="club-card-info">
+                  <span className="club-card-name">
+                    {club.name}
+                    {club.id === primaryClubId && (
+                      <span className="club-badge primary">{t('club.primary')}</span>
+                    )}
+                  </span>
+                  <span className="club-card-members">
+                    {t('club.members', { count: club.memberCount })}
+                  </span>
+                </div>
               </button>
             ))}
           </div>
@@ -342,10 +375,15 @@ export default function ClubSelectPage() {
                 className="club-card"
                 onClick={() => setSelectedClubId(club.id)}
               >
-                <span className="club-card-name">{club.name}</span>
-                <span className="club-card-members">
-                  {t('club.members', { count: club.memberCount })}
-                </span>
+                <div className="avatar avatar-sm">
+                  {club.imageUrl ? <img src={club.imageUrl} alt="" /> : <span>{club.name[0].toUpperCase()}</span>}
+                </div>
+                <div className="club-card-info">
+                  <span className="club-card-name">{club.name}</span>
+                  <span className="club-card-members">
+                    {t('club.members', { count: club.memberCount })}
+                  </span>
+                </div>
               </button>
             ))}
           </div>
@@ -380,6 +418,7 @@ export default function ClubSelectPage() {
       ) : (
         <button
           className="btn btn-secondary club-create-btn"
+          style={{marginTop: 'auto', marginBottom: 10}}
           onClick={() => setShowCreate(true)}
         >
           {t('club.create')}

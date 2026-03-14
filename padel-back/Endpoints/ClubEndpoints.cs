@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using padel.Models;
 using padel.Services;
 
 namespace padel.Endpoints;
@@ -70,6 +72,25 @@ public static class ClubEndpoints
             var success = await clubService.SetPrimaryClub(playerId, id);
             return success ? Results.Ok() : Results.BadRequest();
         });
+
+        group.MapPost("/{id:int}/avatar", async (int id, IFormFile file, HttpContext httpContext, PadelDbContext db, AvatarService avatarService) =>
+        {
+            var playerIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
+                return Results.Unauthorized();
+
+            var isMember = await db.PlayerClubs.AnyAsync(pc => pc.PlayerId == playerId && pc.ClubId == id);
+            if (!isMember) return Results.Forbid();
+
+            var club = await db.Clubs.FindAsync(id);
+            if (club is null) return Results.NotFound();
+
+            await using var stream = file.OpenReadStream();
+            club.ImageUrl = await avatarService.ProcessAndSaveClubAvatar(stream, id);
+            await db.SaveChangesAsync();
+
+            return Results.Ok();
+        }).DisableAntiforgery();
     }
 }
 

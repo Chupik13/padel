@@ -73,10 +73,11 @@
     "spectator": "Вы наблюдатель",
     "host": "Хост: {{name}}",
     "earlyFinishConfirm": "Все неотыгранные матчи получат счёт 8:8. Завершить?",
+    "cancelConfirm": "Отменить турнир? Весь прогресс будет потерян.",
     "earlyFinish": "Завершить досрочно",
     "earlyFinishMinGames": "Нужно сыграть минимум 60% матчей",
     "cancel": "Отменить",
-    "counter": "Матч {{current}} из {{total}}",
+    "counter": "{{current}} из {{total}}",
     "team1": "Команда 1",
     "team2": "Команда 2",
     "resting": "Отдыхают: {{names}}",
@@ -84,7 +85,9 @@
     "matchTable": "Таблица игр",
     "finish": "Завершить турнир",
     "next": "Далее",
-    "finishBtn": "Завершить"
+    "finishBtn": "Завершить",
+    "tabMatch": "Матч",
+    "tabTournament": "Турнир"
   },
   "results": {
     "title": "Результаты турнира",
@@ -174,7 +177,8 @@
     "seasonAvg": "С.ср.",
     "noLeaderboard": "Пока нет данных для рейтинга",
     "deleteConfirm": "Удалить турнир? Это действие необратимо.",
-    "deleteBtn": "Удалить"
+    "deleteBtn": "Удалить",
+    "allClubs": "Все клубы"
   },
   "seasons": {
     "title": "Сезоны",
@@ -193,6 +197,7 @@
     "finished": "Завершён",
     "seasonNumber": "Сезон {{number}}",
     "seasonStarts": "Сезон {{number}} начинается {{date}}",
+    "startsOn": "Начнётся {{date}}",
     "tapToSeeChart": "Нажмите на игрока для графика",
     "daysRemaining": "дней осталось",
     "daysLeft_one": "день до конца сезона",
@@ -230,7 +235,8 @@
     "myClubs": "Мои клубы",
     "setPrimary": "Сделать основным",
     "primary": "Основной",
-    "alreadyMember": "Вы уже участник"
+    "alreadyMember": "Вы уже участник",
+    "avatarError": "Не удалось загрузить аватар"
   },
   "emailPrompt": {
     "title": "Укажите email",

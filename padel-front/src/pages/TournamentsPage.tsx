@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import type { TournamentResult, MatchResult, PlayerResult } from '../types/api';
 import { getTournaments, deleteTournamentPermanent } from '../api/tournaments';
 import { useAuth } from '../context/AuthContext';
-import InfoTip from '../components/InfoTip';
 
 export default function TournamentsPage() {
   const [tournaments, setTournaments] = useState<TournamentResult[]>([]);
@@ -17,7 +16,7 @@ export default function TournamentsPage() {
   const [showEarlyFinished, setShowEarlyFinished] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, miniProfile } = useAuth();
   const { t, i18n } = useTranslation();
   const dateFmt = i18n.language === 'ru' ? 'ru-RU' : 'en-US';
 
@@ -34,7 +33,8 @@ export default function TournamentsPage() {
     }
   };
 
-  useEffect(() => {
+  const loadTournaments = useCallback(() => {
+    setLoading(true);
     getTournaments(true)
       .then((data) => {
         const sorted = [...data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -42,7 +42,11 @@ export default function TournamentsPage() {
       })
       .catch(() => setError(t('tournaments.loadError')))
       .finally(() => setLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [t]);
+
+  useEffect(() => {
+    loadTournaments();
+  }, [loadTournaments]);
 
   const filteredTournaments = tournaments.filter((tr) => {
     if (!showCancelled && tr.isCancelled) return false;
@@ -109,10 +113,7 @@ export default function TournamentsPage() {
           </div>
         </div>
       )}
-      <div className="title-row">
-        <h2 className="screen-title">{t('tournaments.title')}</h2>
-        <InfoTip text={t('tournaments.title_hint')} />
-      </div>
+      <h2 className="screen-title">{t('tournaments.title')}</h2>
 
       <div className="filter-chips">
         <button className={`filter-chip ${showSeasonal ? 'active' : ''}`} onClick={() => setShowSeasonal(!showSeasonal)}>
@@ -139,6 +140,9 @@ export default function TournamentsPage() {
               <div className="tournament-card-info">
                 <span className="tournament-date">
                   {new Date(tr.date).toLocaleDateString(dateFmt)}
+                  {tr.clubName && (
+                    <span className="tournament-club-name">{tr.clubName}</span>
+                  )}
                 </span>
                 <span className="tournament-players">
                   {getAllPlayers(tr).length} {t('tournaments.players')}

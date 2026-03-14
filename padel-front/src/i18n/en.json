@@ -73,10 +73,11 @@
     "spectator": "You are a spectator",
     "host": "Host: {{name}}",
     "earlyFinishConfirm": "All unplayed matches will get a score of 8:8. Finish?",
+    "cancelConfirm": "Cancel tournament? All progress will be lost.",
     "earlyFinish": "Finish early",
     "earlyFinishMinGames": "At least 60% of matches must be played",
     "cancel": "Cancel",
-    "counter": "Match {{current}} of {{total}}",
+    "counter": "{{current}} of {{total}}",
     "team1": "Team 1",
     "team2": "Team 2",
     "resting": "Resting: {{names}}",
@@ -84,7 +85,9 @@
     "matchTable": "Match table",
     "finish": "Finish tournament",
     "next": "Next",
-    "finishBtn": "Finish"
+    "finishBtn": "Finish",
+    "tabMatch": "Match",
+    "tabTournament": "Tournament"
   },
   "results": {
     "title": "Tournament results",
@@ -174,7 +177,8 @@
     "seasonAvg": "S.avg.",
     "noLeaderboard": "No leaderboard data yet",
     "deleteConfirm": "Delete tournament? This action is irreversible.",
-    "deleteBtn": "Delete"
+    "deleteBtn": "Delete",
+    "allClubs": "All clubs"
   },
   "seasons": {
     "title": "Seasons",
@@ -193,6 +197,7 @@
     "finished": "Finished",
     "seasonNumber": "Season {{number}}",
     "seasonStarts": "Season {{number}} starts {{date}}",
+    "startsOn": "Starts {{date}}",
     "tapToSeeChart": "Tap a player to see chart",
     "daysRemaining": "days left",
     "daysLeft_one": "day remaining",
@@ -228,7 +233,8 @@
     "myClubs": "My clubs",
     "setPrimary": "Set as primary",
     "primary": "Primary",
-    "alreadyMember": "Already a member"
+    "alreadyMember": "Already a member",
+    "avatarError": "Failed to upload avatar"
   },
   "emailPrompt": {
     "title": "Enter your email",

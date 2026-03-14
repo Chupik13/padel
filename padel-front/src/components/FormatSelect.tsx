@@ -26,6 +26,14 @@ function getFormatOptions(playerCount: number): FormatOption[] {
     ];
   }
 
+  if (playerCount === 7) {
+    return [
+      { label: '7', matchCount: 7, generationMode: 'fixed' },
+      { label: '14', matchCount: 14, generationMode: 'fixed' },
+      { label: '21', matchCount: 21, generationMode: 'balanced', k: 2 },
+    ];
+  }
+
   return [];
 }
 

@@ -80,7 +80,10 @@ public static class TournamentMapper
             IsFinished = tournament.IsFinished,
             IsEarlyFinished = tournament.IsEarlyFinished,
             IsCancelled = tournament.IsCancelled,
-            FinishedAt = tournament.FinishedAt
+            FinishedAt = tournament.FinishedAt,
+            ClubId = tournament.ClubId,
+            ClubName = tournament.Club?.Name,
+            ClubImageUrl = tournament.Club?.ImageUrl
         };
     }
 }
