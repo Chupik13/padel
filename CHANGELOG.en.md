@@ -15,10 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - Seasonal: 21 matches (balanced, k=2).
   - Friendly: 7 (fixed), 14 (fixed), or 21 (balanced) matches.
   - Each match: 4 play, 3 rest.
+- **Club avatars** — club members can upload a club avatar. Displayed in club lists, club page, and club selection when creating a tournament.
+- **Club name in tournament history** — tournament cards now show the club name where the game was played.
+- **Multi-club tournament filtering** — tournament history shows games from all of the user's clubs, not just the primary one.
 
 ### Improved
 
+- **New design** — Inter font, updated "Georgiano" wordmark logo in the header with colored letters.
+- **In-match progress chart** — replaced the standings table with an SVG line chart showing each player's cumulative score. Tap to open fullscreen chart with axes and avatars. Swipe to switch between match and chart.
+- **"Match" / "Tournament" tabs** — added a toggle to switch between current match view and all-matches table instead of scrolling.
 - **In-game navigation** — prev/next buttons are hidden on the "Tournament" tab, shown only on the "Match" tab.
+- **Profile page** — settings button moved to top-right corner, removed InfoTip hints.
+- **Side menu** — redesigned header: avatar and name on one line, club and rating moved to a meta block.
+- **Clubs page** — club avatars in lists, avatar edit button on the club page.
+- **Seasons page** — future season cards with start date.
+- **Cancel tournament confirmation** — added confirmation text when cancelling a tournament.
+
+### Fixed
+
+- **Docker images switched to Ubuntu** — replaced Alpine with noble (backend) and bookworm (frontend) for linux/amd64 compatibility.
 
 ---
 
