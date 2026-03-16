@@ -319,7 +319,6 @@ function reorderMatches(matches: Match[], latePlayerIds?: Set<number>): Match[] 
     for (const i of remaining) {
       const m = matches[i];
       let penalty = 0;
-      const restingSet = new Set(m.resting);
 
       for (const id of m.resting) {
         // Overlap penalty: player rested in previous match
