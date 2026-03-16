@@ -372,7 +372,9 @@
     "action_create_super_game": "Создание супер-игры",
     "action_assign_badge": "Выдача награды",
     "action_remove_badge": "Удаление награды",
-    "action_send_feedback": "Отправка отзыва"
+    "action_send_feedback": "Отправка отзыва",
+    "action_register_operator": "Регистрация оператора",
+    "action_start_game": "Запуск игры"
   },
   "lateSelect": {
     "checkbox": "Есть опаздывающие",
@@ -382,6 +384,29 @@
   "common": {
     "back": "Назад",
     "cancel": "Отмена"
+  },
+  "video": {
+    "operatorMode": "Начать запись",
+    "selectSide": "Выберите роль",
+    "side1": "Сторона 1",
+    "side2": "Сторона 2",
+    "recording": "Запись",
+    "uploading": "Загрузка...",
+    "uploaded": "Загружено",
+    "uploadFailed": "Ошибка загрузки",
+    "cameraAccessDenied": "Нет доступа к камере",
+    "streamInterrupted": "Запись прервана (звонок или блокировка экрана)",
+    "watch": "Смотреть",
+    "noVideo": "Нет видео",
+    "merging": "Обработка...",
+    "exitOperator": "Выйти из режима оператора",
+    "joinAsOperator": "Стать оператором",
+    "spectate": "Смотреть счёт",
+    "operatorsConnected": "Операторы: {{count}}/2",
+    "useVideoMode": "Инструменты видеозаписи",
+    "waitingForOperators": "Ожидание операторов...",
+    "operatorsRecording": "Записывают: {{count}}/2",
+    "startGame": "Начать игру"
   },
   "table": {
     "name": "Имя",

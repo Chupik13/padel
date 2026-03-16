@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TournamentResult, MatchResult, PlayerResult } from '../types/api';
 import { getTournaments, deleteTournamentPermanent } from '../api/tournaments';
+import { getTournamentVideos } from '../api/videos';
+import type { MatchVideoResult } from '../types/api';
 import { useAuth } from '../context/AuthContext';
 import GuideModal from '../components/GuideModal';
+import VideoPlayerModal from '../components/VideoPlayerModal';
 import { useGuide } from '../hooks/useGuide';
 
 export default function TournamentsPage() {
@@ -17,6 +20,8 @@ export default function TournamentsPage() {
   const [showFriendly, setShowFriendly] = useState(true);
   const [showEarlyFinished, setShowEarlyFinished] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [videoData, setVideoData] = useState<Map<number, MatchVideoResult[]>>(new Map());
+  const [videoModal, setVideoModal] = useState<{ url: string; title: string } | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
@@ -61,8 +66,17 @@ export default function TournamentsPage() {
   const toggleExpand = (id: number) => {
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        // Fetch video data when expanding
+        if (!videoData.has(id)) {
+          getTournamentVideos(id).then((videos) => {
+            setVideoData((prev) => new Map(prev).set(id, videos));
+          }).catch(() => {});
+        }
+      }
       return next;
     });
   };
@@ -208,7 +222,8 @@ export default function TournamentsPage() {
                         live = true;
                       }
                     }
-                    return <MatchRow key={m.id} match={m} hostPlayerId={tr.hostPlayerId} duration={duration} liveStartedAt={live ? m.startedAt : undefined} onPlayerClick={(login) => navigate(`/profile/${login}`)} />;
+                    const matchVideo = videoData.get(tr.id)?.find((v) => v.matchId === m.id);
+                    return <MatchRow key={m.id} match={m} hostPlayerId={tr.hostPlayerId} duration={duration} liveStartedAt={live ? m.startedAt : undefined} onPlayerClick={(login) => navigate(`/profile/${login}`)} videoInfo={matchVideo} onPlayVideo={(url) => setVideoModal({ url, title: `${t('match.tabMatch')} ${idx + 1}` })} />;
                   })}
                 </div>
                 {tr.results.length > 0 && (
@@ -240,6 +255,13 @@ export default function TournamentsPage() {
           </div>
         ))}
       </div>
+      {videoModal && (
+        <VideoPlayerModal
+          videoUrl={videoModal.url}
+          title={videoModal.title}
+          onClose={() => setVideoModal(null)}
+        />
+      )}
       {showGuide && <GuideModal page="tournaments" onClose={dismissGuide} />}
     </div>
   );
@@ -277,7 +299,7 @@ function formatDuration(ms: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-function MatchRow({ match, hostPlayerId, duration, liveStartedAt, onPlayerClick }: { match: MatchResult; hostPlayerId: number | null; duration?: string; liveStartedAt?: string; onPlayerClick: (login: string) => void }) {
+function MatchRow({ match, hostPlayerId, duration, liveStartedAt, onPlayerClick, videoInfo, onPlayVideo }: { match: MatchResult; hostPlayerId: number | null; duration?: string; liveStartedAt?: string; onPlayerClick: (login: string) => void; videoInfo?: MatchVideoResult; onPlayVideo?: (url: string) => void }) {
   const [liveElapsed, setLiveElapsed] = useState('');
 
   const updateElapsed = useCallback(() => {
@@ -321,6 +343,15 @@ function MatchRow({ match, hostPlayerId, duration, liveStartedAt, onPlayerClick 
       <div className="tournament-match-score">
         {match.teamOneScore} : {match.teamTwoScore}
         {displayDuration && <span className="match-duration">{displayDuration}</span>}
+        {videoInfo?.videoUrl && onPlayVideo && (
+          <button
+            className="video-play-btn"
+            onClick={(e) => { e.stopPropagation(); onPlayVideo(videoInfo.videoUrl!); }}
+            title={videoInfo.mergeStatus === 'Processing' ? 'Processing...' : 'Play video'}
+          >
+            {videoInfo.mergeStatus === 'Processing' ? '⏳' : '▶'}
+          </button>
+        )}
       </div>
       <div className="tournament-match-team tournament-match-team-right">
         <PlayerName player={match.teamTwoPlayer1} reverse />

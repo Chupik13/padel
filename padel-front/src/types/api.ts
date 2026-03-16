@@ -93,6 +93,8 @@ export interface TournamentResult {
   clubId: number | null;
   clubName: string | null;
   clubImageUrl: string | null;
+  hasVideoMode: boolean;
+  isGameStarted: boolean;
 }
 
 export interface SuperGameResult {
@@ -203,6 +205,7 @@ export interface CreateLiveTournamentRequest {
   inSeason: boolean;
   clubId?: number;
   matches: MatchSetupRequest[];
+  hasVideoMode?: boolean;
 }
 
 export interface CreateSuperGameRequest {
@@ -239,6 +242,20 @@ export interface AssignBadgeRequest {
   playerId: number;
   badgeTypeId: number;
   note?: string;
+}
+
+export interface MatchVideoResult {
+  matchId: number;
+  videoUrl: string | null;
+  hasBothSides: boolean;
+  mergeStatus: string;
+}
+
+export interface OperatorResult {
+  playerId: number;
+  playerName: string;
+  cameraSide: number;
+  isActive: boolean;
 }
 
 export interface AuditLogResult {

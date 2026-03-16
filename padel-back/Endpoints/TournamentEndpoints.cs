@@ -66,7 +66,7 @@ public static class TournamentEndpoints
             }
             if (!clubId.HasValue) return Results.BadRequest();
             var result = await tournamentService.CreateLiveTournament(playerId, request, clubId);
-            await auditLogService.Log(playerId, "create_live_tournament", $"tournamentId={result.Id}");
+            await auditLogService.Log(playerId, "create_live_tournament", $"tournamentId={result.Id}" + (request.HasVideoMode ? ", videoMode=true" : ""));
             return Results.Created($"/api/tournaments/{result.Id}", result);
         });
 
@@ -111,6 +111,7 @@ public static class TournamentEndpoints
 
             await hub.Clients.Group($"tournament-{id}").SendAsync("ScoreUpdated",
                 id, request.MatchIndex, request.TeamOneScore, request.TeamTwoScore);
+            await hub.Clients.Group($"tournament-{id}").SendAsync("StopRecording", request.MatchIndex);
 
             return Results.Ok(result);
         });
@@ -127,6 +128,7 @@ public static class TournamentEndpoints
                 return Results.Forbid();
 
             await hub.Clients.Group($"tournament-{id}").SendAsync("MatchNavigated", id, request.MatchIndex);
+            await hub.Clients.Group($"tournament-{id}").SendAsync("StartRecording", request.MatchIndex);
 
             return Results.Ok();
         });
@@ -142,6 +144,7 @@ public static class TournamentEndpoints
             if (!success)
                 return Results.Forbid();
 
+            await hub.Clients.Group($"tournament-{id}").SendAsync("StopRecording", -1);
             await hub.Clients.Group($"tournament-{id}").SendAsync("TournamentFinished", id);
             await auditLogService.Log(playerId, "finish_tournament", $"tournamentId={id}");
 
@@ -163,6 +166,7 @@ public static class TournamentEndpoints
                 return Results.Forbid();
             }
 
+            await hub.Clients.Group($"tournament-{id}").SendAsync("StopRecording", -1);
             await hub.Clients.Group($"tournament-{id}").SendAsync("TournamentFinished", id);
             await auditLogService.Log(playerId, "early_finish_tournament", $"tournamentId={id}");
 
@@ -179,6 +183,41 @@ public static class TournamentEndpoints
             if (success)
                 await auditLogService.Log(playerId, "delete_tournament", $"tournamentId={id}");
             return success ? Results.NoContent() : Results.NotFound();
+        });
+
+        group.MapPut("/{id}/start-game", async (int id, TournamentService tournamentService,
+            IHubContext<TournamentHub> hub, HttpContext httpContext, PadelDbContext db, AuditLogService auditLogService) =>
+        {
+            var playerIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
+                return Results.Unauthorized();
+
+            var tournament = await db.Tournaments
+                .Include(t => t.Matches.OrderBy(m => m.MatchOrder))
+                .FirstOrDefaultAsync(t => t.Id == id);
+            if (tournament is null)
+                return Results.NotFound();
+
+            var isAdmin = await EndpointHelpers.IsAdmin(httpContext, db);
+            if (!isAdmin && tournament.HostPlayerId != playerId)
+                return Results.Forbid();
+
+            if (!tournament.HasVideoMode || tournament.IsGameStarted)
+                return Results.BadRequest(new { error = "Game already started or no video mode" });
+
+            tournament.IsGameStarted = true;
+            var firstMatch = tournament.Matches.FirstOrDefault();
+            if (firstMatch is not null)
+                firstMatch.StartedAt = DateTime.UtcNow;
+
+            await db.SaveChangesAsync();
+
+            await hub.Clients.Group($"tournament-{id}").SendAsync("GameStarted", id);
+            await hub.Clients.Group($"tournament-{id}").SendAsync("StartRecording", 0);
+
+            await auditLogService.Log(playerId, "start_game", $"tournamentId={id}");
+
+            return Results.Ok();
         });
 
         group.MapDelete("/{id}", async (int id, TournamentService tournamentService,

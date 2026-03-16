@@ -129,7 +129,9 @@ public class TournamentService(PadelDbContext db)
             HostPlayerId = hostPlayerId,
             CurrentMatchIndex = 0,
             IsFinished = false,
-            ClubId = clubId
+            ClubId = clubId,
+            HasVideoMode = request.HasVideoMode,
+            IsGameStarted = !request.HasVideoMode
         };
         db.Tournaments.Add(tournament);
         await db.SaveChangesAsync();
@@ -137,7 +139,7 @@ public class TournamentService(PadelDbContext db)
         for (var i = 0; i < request.Matches.Count; i++)
         {
             var matchReq = request.Matches[i];
-            var match = new Match { TournamentId = tournament.Id, MatchOrder = i, StartedAt = i == 0 ? now : null };
+            var match = new Match { TournamentId = tournament.Id, MatchOrder = i, StartedAt = (i == 0 && !request.HasVideoMode) ? now : null };
             db.Matches.Add(match);
             await db.SaveChangesAsync();
 

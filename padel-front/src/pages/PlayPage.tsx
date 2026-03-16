@@ -5,7 +5,7 @@ import type { PlayerResult, TournamentResult } from '../types/api';
 import { generateSchedule, generateFixedSchedule } from '../utils/scheduler';
 import { saveTournament as saveLocal, loadTournament, clearTournament } from '../utils/storage';
 import { getSeasons } from '../api/seasons';
-import { createLiveTournament, getUnfinishedTournaments, getClubActiveTournaments, updateMatchScore, navigateMatch, finishTournament, earlyFinishTournament, cancelTournament } from '../api/tournaments';
+import { createLiveTournament, getUnfinishedTournaments, getClubActiveTournaments, updateMatchScore, navigateMatch, finishTournament, earlyFinishTournament, cancelTournament, startGame } from '../api/tournaments';
 import { useAuth } from '../context/AuthContext';
 import { useTournamentHub } from '../hooks/useTournamentHub';
 import FormatSelect from '../components/FormatSelect';
@@ -15,8 +15,11 @@ import Results from '../components/Results';
 import InfoTip from '../components/InfoTip';
 import GuideModal from '../components/GuideModal';
 import { useGuide } from '../hooks/useGuide';
+import OperatorView from '../components/OperatorView';
+import { registerOperator, getOperators } from '../api/videos';
+import type { OperatorResult } from '../types/api';
 
-type PlayScreen = 'loading' | 'unfinished' | 'no-club' | 'select-club' | 'season-toggle' | 'select-players' | 'select-matches' | 'match' | 'results';
+type PlayScreen = 'loading' | 'unfinished' | 'no-club' | 'select-club' | 'season-toggle' | 'select-players' | 'select-matches' | 'match' | 'results' | 'operator';
 
 function getSeasonalFormat(playerCount: number): FormatOption {
   if (playerCount === 4) return { label: '', matchCount: 9, generationMode: 'balanced', k: 3 };
@@ -56,6 +59,8 @@ function tournamentResultToLocal(result: TournamentResult): Tournament {
     id: result.id,
     hostPlayerId: result.hostPlayerId ?? undefined,
     isFinished: result.isFinished,
+    hasVideoMode: result.hasVideoMode,
+    isGameStarted: result.isGameStarted,
   };
 }
 
@@ -86,6 +91,16 @@ export default function PlayPage() {
   const [clubActiveList, setClubActiveList] = useState<TournamentResult[]>([]);
 
   const [latePlayerIds, setLatePlayerIds] = useState<Set<number>>(new Set());
+
+  // Operator mode
+  const [operatorSide, setOperatorSide] = useState<number>(0);
+  const [operators, setOperators] = useState<OperatorResult[]>([]);
+  const [showOperatorChoice, setShowOperatorChoice] = useState(false);
+  const [serverMatchIds, setServerMatchIds] = useState<number[]>([]);
+
+  // Video mode
+  const [hasVideoMode, setHasVideoMode] = useState(false);
+  const [isGameStarted, setIsGameStarted] = useState(true);
 
   // Club selection
   const [selectedClubId, setSelectedClubId] = useState<number | undefined>();
@@ -136,19 +151,50 @@ export default function PlayPage() {
     onTournamentCancelled: () => {
       handleRestart();
     },
+    onStartRecording: (matchIndex: number) => {
+      const start = (window as unknown as Record<string, unknown>).__operatorStartSegment;
+      if (typeof start === 'function') (start as (i: number) => void)(matchIndex);
+    },
+    onStopRecording: (matchIndex: number) => {
+      if (matchIndex === -1) {
+        const stop = (window as unknown as Record<string, unknown>).__operatorStop;
+        if (typeof stop === 'function') (stop as () => void)();
+      } else {
+        const stopSeg = (window as unknown as Record<string, unknown>).__operatorStopSegment;
+        if (typeof stopSeg === 'function') (stopSeg as () => Promise<void>)();
+      }
+    },
+    onOperatorJoined: (_playerId: number, _cameraSide: number) => {
+      if (tournament?.id) {
+        getOperators(tournament.id).then(setOperators).catch(() => {});
+      }
+    },
+    onGameStarted: () => {
+      setIsGameStarted(true);
+      setTournament((prev) => {
+        if (!prev) return prev;
+        const matches = [...prev.matches];
+        if (matches[0] && !matches[0].startedAt) {
+          matches[0] = { ...matches[0], startedAt: new Date().toISOString() };
+        }
+        return { ...prev, matches, isGameStarted: true };
+      });
+      // For operators: discard pre-game segment, start fresh
+      const gameStarted = (window as unknown as Record<string, unknown>).__operatorGameStarted;
+      if (typeof gameStarted === 'function') (gameStarted as () => void)();
+    },
   });
 
   const loadUnfinished = useCallback(async () => {
     try {
       const list = await getUnfinishedTournaments();
-      if (!isAdmin) {
-        const spectator = list.find((t) => t.hostPlayerId !== user?.id);
-        if (spectator && spectator.matches.length > 0) {
-          enterTournament(spectator);
-          return;
-        }
+
+      // Auto-enter if player is a participant in any active tournament
+      const myTournament = list.find((t) => t.matches.length > 0);
+      if (myTournament) {
+        enterTournament(myTournament);
+        return;
       }
-      const hostList = isAdmin ? list : list.filter((t) => t.hostPlayerId === user?.id);
 
       let clubActive: TournamentResult[] = [];
       try {
@@ -158,8 +204,8 @@ export default function PlayPage() {
       } catch { /* ignore */ }
       setClubActiveList(clubActive);
 
-      if (hostList.length > 0 || clubActive.length > 0) {
-        setUnfinishedList(hostList);
+      if (clubActive.length > 0) {
+        setUnfinishedList([]);
         setScreen('unfinished');
         return;
       }
@@ -211,6 +257,9 @@ export default function PlayPage() {
     const currentIsHost = user?.id === t.hostPlayerId || isAdmin;
     setIsHost(currentIsHost);
     setInSeason(t.seasonId != null);
+    setHasVideoMode(t.hasVideoMode);
+    setIsGameStarted(t.isGameStarted);
+    setOperators([]);
 
     if (!currentIsHost) {
       const hostPlayer = t.matches
@@ -219,8 +268,36 @@ export default function PlayPage() {
       setHostName(hostPlayer?.name);
     }
 
+    setServerMatchIds(t.matches.map((m) => m.id));
     joinTournament(t.id);
-    setScreen(t.isFinished ? 'results' : 'match');
+
+    // Fetch current operators for video mode
+    if (t.hasVideoMode && !t.isFinished) {
+      getOperators(t.id).then(setOperators).catch(() => {});
+    }
+
+    if (!currentIsHost && !t.isFinished) {
+      setScreen('match');
+    } else {
+      setScreen(t.isFinished ? 'results' : 'match');
+    }
+  };
+
+  const handleBecomeOperator = async (side: number) => {
+    if (!tournament?.id) return;
+    try {
+      await registerOperator(tournament.id, side);
+      setOperatorSide(side);
+      setShowOperatorChoice(false);
+      setScreen('operator');
+    } catch (e) {
+      console.error('registerOperator failed', e);
+    }
+  };
+
+  const handleExitOperator = () => {
+    setOperatorSide(0);
+    setScreen('match');
   };
 
   const handleResume = () => {
@@ -249,14 +326,15 @@ export default function PlayPage() {
     setScreen('select-players');
   };
 
-  const handlePlayersSubmit = (players: PlayerResult[], lateIds: Set<number>) => {
+  const handlePlayersSubmit = (players: PlayerResult[], lateIds: Set<number>, useVideo: boolean) => {
     setApiPlayers(players);
     setLatePlayerIds(lateIds);
+    setHasVideoMode(useVideo);
     if (inSeason) {
       const opt = getSeasonalFormat(players.length);
       setFormatOption(opt);
       setFormat('balanced');
-      startTournament(players, true, opt, lateIds);
+      startTournament(players, true, opt, lateIds, useVideo);
     } else {
       setScreen('select-matches');
     }
@@ -265,10 +343,10 @@ export default function PlayPage() {
   const handleSelectMatches = (option: FormatOption) => {
     setFormatOption(option);
     setFormat(option.generationMode === 'balanced' ? 'balanced' : 'fixed-5');
-    startTournament(apiPlayers, false, option, latePlayerIds);
+    startTournament(apiPlayers, false, option, latePlayerIds, hasVideoMode);
   };
 
-  const startTournament = async (players: PlayerResult[], seasonal: boolean, opt: FormatOption, lateIds?: Set<number>) => {
+  const startTournament = async (players: PlayerResult[], seasonal: boolean, opt: FormatOption, lateIds?: Set<number>, videoMode?: boolean) => {
     const localPlayers: Player[] = players.map((p) => ({ id: p.id, name: p.name, imageUrl: p.imageUrl, isAdmin: p.isAdmin }));
     const ids = localPlayers.map((p) => p.id);
     const late = lateIds && lateIds.size > 0 ? lateIds : undefined;
@@ -282,6 +360,7 @@ export default function PlayPage() {
         isBalanced: opt.generationMode === 'balanced',
         inSeason: seasonal,
         clubId: selectedClubId,
+        hasVideoMode: videoMode,
         matches: matches.map((m) => ({
           teamOne: { firstPlayerId: m.team1[0], secondPlayerId: m.team1[1] },
           teamTwo: { firstPlayerId: m.team2[0], secondPlayerId: m.team2[1] },
@@ -289,18 +368,23 @@ export default function PlayPage() {
       });
 
       const now = new Date().toISOString();
+      const gameStarted = !videoMode;
       const tr: Tournament = {
         players: localPlayers,
-        matches: matches.map((m, i) => ({ ...m, startedAt: i === 0 ? now : undefined })),
+        matches: matches.map((m, i) => ({ ...m, startedAt: (i === 0 && gameStarted) ? now : undefined })),
         currentMatchIndex: 0,
         format: opt.generationMode === 'balanced' ? 'balanced' : undefined,
         id: result.id,
         hostPlayerId: result.hostPlayerId ?? undefined,
         isFinished: false,
+        hasVideoMode: videoMode,
+        isGameStarted: gameStarted,
       };
       setTournament(tr);
       setIsHost(true);
+      setIsGameStarted(gameStarted);
       setFormatOption(opt);
+      setServerMatchIds(result.matches.map((m) => m.id));
       joinTournament(result.id);
       setScreen('match');
     } catch {
@@ -403,6 +487,22 @@ export default function PlayPage() {
     setScreen('results');
   }, [tournament?.id, t]);
 
+  const handleStartGame = useCallback(async () => {
+    if (!tournament?.id) return;
+    try {
+      await startGame(tournament.id);
+      setIsGameStarted(true);
+      setTournament((prev) => {
+        if (!prev) return prev;
+        const matches = [...prev.matches];
+        if (matches[0] && !matches[0].startedAt) {
+          matches[0] = { ...matches[0], startedAt: new Date().toISOString() };
+        }
+        return { ...prev, matches, isGameStarted: true };
+      });
+    } catch { /* ignore */ }
+  }, [tournament?.id]);
+
   const handleCancel = useCallback(async () => {
     if (tournament?.id) {
       try { await cancelTournament(tournament.id); } catch { /* ignore */ }
@@ -434,17 +534,12 @@ export default function PlayPage() {
     setInSeason(false);
     setIsHost(false);
     setHostName(undefined);
+    setHasVideoMode(false);
+    setIsGameStarted(true);
+    setOperators([]);
 
-    try {
-      const list = await getUnfinishedTournaments();
-      const hostList = isAdmin ? list : list.filter((t) => t.hostPlayerId === user?.id);
-      if (hostList.length > 0) {
-        setUnfinishedList(hostList);
-        setScreen('unfinished');
-        return;
-      }
-    } catch { /* ignore */ }
-    goToFirstScreen();
+    const result = await loadUnfinished();
+    if (result === null) goToFirstScreen();
   };
 
   const dateFmt = i18n.language === 'ru' ? 'ru-RU' : 'en-US';
@@ -470,6 +565,30 @@ export default function PlayPage() {
               <button className="btn btn-primary" onClick={handleResume}>
                 {t('play.resumeYes')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showOperatorChoice && tournament?.id && (
+        <div className="modal-overlay" onClick={() => setShowOperatorChoice(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <p>{t('video.selectSide')}</p>
+            <div className="button-row" style={{ flexDirection: 'column', gap: 8 }}>
+              {[1, 2].map((side) => {
+                const taken = operators.some((o) => o.cameraSide === side && o.playerId !== user?.id);
+                return (
+                  <button
+                    key={side}
+                    className="btn btn-secondary"
+                    disabled={taken}
+                    onClick={() => handleBecomeOperator(side)}
+                  >
+                    {t('video.joinAsOperator')} — {t('video.side' + side)}
+                    {taken && ' ✓'}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -629,18 +748,64 @@ export default function PlayPage() {
         />
       )}
 
+      {screen === 'match' && tournament && isHost && tournament.id && operators.length > 0 && (
+        <div className="operator-indicator">
+          {t('video.operatorsConnected', { count: operators.length })}
+        </div>
+      )}
+
       {screen === 'match' && tournament && (
-        <MatchView
-          tournament={tournament}
-          onUpdateScore={handleUpdateScore}
-          onNext={handleNext}
-          onPrev={handlePrev}
-          onFinish={handleFinish}
-          onCancel={isHost ? handleCancel : undefined}
-          onEarlyFinish={isHost && !inSeason ? handleEarlyFinish : undefined}
-          readOnly={!!tournament.id && !isHost}
-          hostName={hostName}
-          earlyFinishError={earlyFinishError}
+        <>
+          <MatchView
+            tournament={tournament}
+            onUpdateScore={handleUpdateScore}
+            onNext={handleNext}
+            onPrev={handlePrev}
+            onFinish={handleFinish}
+            onCancel={isHost ? handleCancel : undefined}
+            onEarlyFinish={isHost && !inSeason ? handleEarlyFinish : undefined}
+            onBecomeOperator={!!tournament.id && !isHost && !tournament.isFinished && hasVideoMode ? () => {
+              getOperators(tournament.id!).then((ops) => {
+                setOperators(ops);
+                setShowOperatorChoice(true);
+              }).catch(() => {
+                setOperators([]);
+                setShowOperatorChoice(true);
+              });
+            } : undefined}
+            readOnly={!!tournament.id && !isHost}
+            hostName={hostName}
+            earlyFinishError={earlyFinishError}
+            hideControls={hasVideoMode && !isGameStarted}
+          />
+          {hasVideoMode && !isGameStarted && isHost && (
+            <div className="match-footer">
+              <p style={{ color: '#9dbdba', textAlign: 'center', margin: '0 0 8px' }}>
+                {t('video.operatorsRecording', { count: operators.length })}
+              </p>
+              <div className="button-row">
+                <button
+                  className="btn btn-primary"
+                  style={{ width: '100%' }}
+                  disabled={operators.length < 2}
+                  onClick={handleStartGame}
+                >
+                  {t('video.startGame')}
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {screen === 'operator' && tournament?.id && (
+        <OperatorView
+          tournamentId={tournament.id}
+          cameraSide={operatorSide}
+          matchIds={serverMatchIds}
+          currentMatchIndex={tournament.currentMatchIndex}
+          totalMatches={tournament.matches.length}
+          onExit={handleExitOperator}
         />
       )}
 

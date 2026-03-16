@@ -10,9 +10,11 @@ interface Props {
   onFinish: () => void;
   onCancel?: () => void;
   onEarlyFinish?: () => void;
+  onBecomeOperator?: () => void;
   readOnly?: boolean;
   hostName?: string;
   earlyFinishError?: string;
+  hideControls?: boolean;
 }
 
 function getPlayer(players: Player[], id: number): Player | undefined {
@@ -249,7 +251,7 @@ function useSwipe(onSwipeLeft: () => void, onSwipeRight: () => void) {
   return { onTouchStart, onTouchEnd };
 }
 
-export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, onFinish, onCancel, onEarlyFinish, readOnly = false, hostName, earlyFinishError }: Props) {
+export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, onFinish, onCancel, onEarlyFinish, onBecomeOperator, readOnly = false, hostName, earlyFinishError, hideControls = false }: Props) {
   const { players, matches, currentMatchIndex } = tournament;
   const safeIndex = matches.length > 0 ? Math.min(currentMatchIndex, matches.length - 1) : 0;
   const match = matches.length > 0 ? matches[safeIndex] : undefined;
@@ -406,6 +408,11 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
                 {t('match.finishBtn')}
               </button>
             )}
+            {readOnly && onBecomeOperator && (
+              <button className="match-finish-btn" onClick={onBecomeOperator}>
+                {t('video.joinAsOperator')}
+              </button>
+            )}
             <div className="progress-bar">
               <div className="progress-fill" style={{ width: `${progress}%` }} />
             </div>
@@ -429,23 +436,25 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
                   );
                 })}
               </div>
-              <input
-                className="score-input"
-                type="number"
-                inputMode="numeric"
-                placeholder="0"
-                value={score1}
-                disabled={readOnly}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setScore1(val);
-                  const num = parseInt(val);
-                  if (val !== '' && !isNaN(num) && num >= 0 && num <= 16) {
-                    setScore2((16 - num).toString());
-                  }
-                }}
-                onBlur={saveScores}
-              />
+              {!hideControls && (
+                <input
+                  className="score-input"
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={score1}
+                  disabled={readOnly}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setScore1(val);
+                    const num = parseInt(val);
+                    if (val !== '' && !isNaN(num) && num >= 0 && num <= 16) {
+                      setScore2((16 - num).toString());
+                    }
+                  }}
+                  onBlur={saveScores}
+                />
+              )}
             </div>
 
             <div className="vs">VS</div>
@@ -462,23 +471,25 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
                   );
                 })}
               </div>
-              <input
-                className="score-input"
-                type="number"
-                inputMode="numeric"
-                placeholder="0"
-                value={score2}
-                disabled={readOnly}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setScore2(val);
-                  const num = parseInt(val);
-                  if (val !== '' && !isNaN(num) && num >= 0 && num <= 16) {
-                    setScore1((16 - num).toString());
-                  }
-                }}
-                onBlur={saveScores}
-              />
+              {!hideControls && (
+                <input
+                  className="score-input"
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={score2}
+                  disabled={readOnly}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setScore2(val);
+                    const num = parseInt(val);
+                    if (val !== '' && !isNaN(num) && num >= 0 && num <= 16) {
+                      setScore1((16 - num).toString());
+                    }
+                  }}
+                  onBlur={saveScores}
+                />
+              )}
             </div>
           </div>
           {match.resting.length > 0 && (
@@ -511,7 +522,7 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
             </table>
           </div>
         )}
-      {!readOnly && activeTab === 'match' && (
+      {!readOnly && !hideControls && activeTab === 'match' && (
         <div className="match-footer">
           <div className="button-row">
             <button className="btn btn-secondary" onClick={handlePrev} disabled={isFirst}>

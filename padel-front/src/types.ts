@@ -26,4 +26,6 @@ export type Tournament = {
   id?: number;
   hostPlayerId?: number;
   isFinished?: boolean;
+  hasVideoMode?: boolean;
+  isGameStarted?: boolean;
 };

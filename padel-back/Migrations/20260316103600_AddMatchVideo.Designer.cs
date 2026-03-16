@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using padel.Models;
@@ -11,9 +12,11 @@ using padel.Models;
 namespace padel.Migrations
 {
     [DbContext(typeof(PadelDbContext))]
-    partial class PadelDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260316103600_AddMatchVideo")]
+    partial class AddMatchVideo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -420,9 +423,6 @@ namespace padel.Migrations
                     b.Property<DateTime?>("FinishedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<bool>("HasVideoMode")
-                        .HasColumnType("boolean");
-
                     b.Property<int?>("HostPlayerId")
                         .HasColumnType("integer");
 
@@ -436,9 +436,6 @@ namespace padel.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsFinished")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsGameStarted")
                         .HasColumnType("boolean");
 
                     b.Property<int?>("SeasonId")

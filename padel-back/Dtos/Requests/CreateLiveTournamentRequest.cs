@@ -6,6 +6,7 @@ public class CreateLiveTournamentRequest
     public bool InSeason { get; set; }
     public int? ClubId { get; set; }
     public List<MatchSetupRequest> Matches { get; set; } = [];
+    public bool HasVideoMode { get; set; }
 }
 
 public class MatchSetupRequest

@@ -18,6 +18,8 @@ public class PadelDbContext(DbContextOptions<PadelDbContext> options) : DbContex
     public DbSet<BadgeType> BadgeTypes => Set<BadgeType>();
     public DbSet<PlayerBadge> PlayerBadges => Set<PlayerBadge>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<MatchVideo> MatchVideos => Set<MatchVideo>();
+    public DbSet<TournamentOperator> TournamentOperators => Set<TournamentOperator>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -136,6 +138,28 @@ public class PadelDbContext(DbContextOptions<PadelDbContext> options) : DbContex
                 .WithMany()
                 .HasForeignKey(l => l.PlayerId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<MatchVideo>(entity =>
+        {
+            entity.HasIndex(mv => new { mv.MatchId, mv.CameraSide }).IsUnique();
+            entity.HasOne(mv => mv.Match)
+                .WithMany(m => m.Videos)
+                .HasForeignKey(mv => mv.MatchId);
+            entity.HasOne(mv => mv.OperatorPlayer)
+                .WithMany()
+                .HasForeignKey(mv => mv.OperatorPlayerId);
+        });
+
+        modelBuilder.Entity<TournamentOperator>(entity =>
+        {
+            entity.HasIndex(to => new { to.TournamentId, to.CameraSide }).IsUnique();
+            entity.HasOne(to => to.Tournament)
+                .WithMany()
+                .HasForeignKey(to => to.TournamentId);
+            entity.HasOne(to => to.Player)
+                .WithMany()
+                .HasForeignKey(to => to.PlayerId);
         });
     }
 }

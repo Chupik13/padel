@@ -40,9 +40,16 @@ builder.Services.AddScoped<AvatarService>();
 builder.Services.AddScoped<ClubService>();
 builder.Services.AddScoped<BadgeService>();
 builder.Services.AddScoped<AuditLogService>();
+builder.Services.AddScoped<VideoService>();
 builder.Services.AddHostedService<SeasonBackgroundService>();
 builder.Services.AddHostedService<TournamentAutoCleanupService>();
+builder.Services.AddHostedService<VideoMergeBackgroundService>();
 builder.Services.AddSignalR();
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 500 * 1024 * 1024; // 500 MB
+});
 
 var app = builder.Build();
 
@@ -68,6 +75,7 @@ app.MapClubEndpoints();
 app.MapBadgeEndpoints();
 app.MapFeedbackEndpoints();
 app.MapAuditLogEndpoints();
+app.MapVideoEndpoints();
 app.MapHub<TournamentHub>("/hubs/tournament");
 
 app.Run();

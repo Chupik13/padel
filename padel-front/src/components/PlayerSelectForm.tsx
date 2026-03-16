@@ -9,7 +9,7 @@ const MAX_PLAYERS = 7;
 
 interface Props {
   clubId?: number;
-  onSubmit: (players: PlayerResult[], lateIds: Set<number>) => void;
+  onSubmit: (players: PlayerResult[], lateIds: Set<number>, useVideo: boolean) => void;
   onBack: () => void;
 }
 
@@ -18,6 +18,7 @@ export default function PlayerSelectForm({ clubId, onSubmit, onBack }: Props) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [hasLate, setHasLate] = useState(false);
   const [lateIds, setLateIds] = useState<Set<number>>(new Set());
+  const [useVideo, setUseVideo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { t } = useTranslation();
@@ -65,7 +66,7 @@ export default function PlayerSelectForm({ clubId, onSubmit, onBack }: Props) {
   const handleSubmit = () => {
     if (selected.size < MIN_PLAYERS || selected.size > MAX_PLAYERS) return;
     const players = allPlayers.filter((p) => selected.has(p.id));
-    onSubmit(players, hasLate ? lateIds : new Set());
+    onSubmit(players, hasLate ? lateIds : new Set(), useVideo);
   };
 
   const selectedPlayers = allPlayers.filter((p) => selected.has(p.id));
@@ -140,6 +141,13 @@ export default function PlayerSelectForm({ clubId, onSubmit, onBack }: Props) {
           )}
         </div>
       )}
+
+      <div className="late-section">
+        <label className="late-checkbox" onClick={() => setUseVideo(!useVideo)}>
+          <span className={`checkbox-box${useVideo ? ' checked' : ''}`} />
+          <span>{t('video.useVideoMode')}</span>
+        </label>
+      </div>
 
       <div className="button-row">
         <button className="btn btn-secondary" onClick={onBack}>

@@ -84,7 +84,9 @@ public static class TournamentMapper
             FinishedAt = tournament.FinishedAt,
             ClubId = tournament.ClubId,
             ClubName = tournament.Club?.Name,
-            ClubImageUrl = tournament.Club?.ImageUrl
+            ClubImageUrl = tournament.Club?.ImageUrl,
+            HasVideoMode = tournament.HasVideoMode,
+            IsGameStarted = tournament.IsGameStarted
         };
     }
 }

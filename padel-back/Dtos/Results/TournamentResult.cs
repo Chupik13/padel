@@ -17,4 +17,6 @@ public class TournamentResult
     public int? ClubId { get; set; }
     public string? ClubName { get; set; }
     public string? ClubImageUrl { get; set; }
+    public bool HasVideoMode { get; set; }
+    public bool IsGameStarted { get; set; }
 }

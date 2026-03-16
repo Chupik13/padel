@@ -360,29 +360,32 @@ function reorderMatches(matches: Match[], latePlayerIds?: Set<number>): Match[] 
 
 /** Balance team order so each player is "first in team" roughly equally. */
 function balanceTeamOrder(matches: Match[]): Match[] {
-  const firstCount: Record<number, number> = {};
+  const globalFirst: Record<number, number> = {};
+  const pairFirst: Record<string, Record<number, number>> = {};
   const result: Match[] = [];
 
+  const swapIfNeeded = (team: [number, number]) => {
+    const key = pairKey(team[0], team[1]);
+    if (!pairFirst[key]) pairFirst[key] = {};
+    const pa = pairFirst[key][team[0]] ?? 0;
+    const pb = pairFirst[key][team[1]] ?? 0;
+    if (pa > pb) {
+      team.reverse();
+    } else if (pa === pb) {
+      const ga = globalFirst[team[0]] ?? 0;
+      const gb = globalFirst[team[1]] ?? 0;
+      if (ga > gb) team.reverse();
+    }
+    pairFirst[key][team[0]] = (pairFirst[key][team[0]] ?? 0) + 1;
+    globalFirst[team[0]] = (globalFirst[team[0]] ?? 0) + 1;
+  };
+
   for (const m of matches) {
-    // For each team, check if swapping would improve balance
     const t1 = [...m.team1] as [number, number];
     const t2 = [...m.team2] as [number, number];
-
-    // Team 1: swap if second player has been first less often, or randomly on tie
-    const c1a = firstCount[t1[0]] ?? 0;
-    const c1b = firstCount[t1[1]] ?? 0;
-    if (c1a > c1b || (c1a === c1b && Math.random() < 0.5)) t1.reverse();
-
-    // Team 2: same logic
-    const c2a = firstCount[t2[0]] ?? 0;
-    const c2b = firstCount[t2[1]] ?? 0;
-    if (c2a > c2b || (c2a === c2b && Math.random() < 0.5)) t2.reverse();
-
-    // Update counts
-    firstCount[t1[0]] = (firstCount[t1[0]] ?? 0) + 1;
-    firstCount[t2[0]] = (firstCount[t2[0]] ?? 0) + 1;
-
-    result.push({ ...m, team1: t1 as [number, number], team2: t2 as [number, number] });
+    swapIfNeeded(t1);
+    swapIfNeeded(t2);
+    result.push({ ...m, team1: t1, team2: t2 });
   }
 
   return result;

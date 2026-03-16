@@ -50,6 +50,9 @@ padel-back/padel.http
 # Avatars (user uploads)
 padel-back/wwwroot/avatars/
 
+# Video data
+padel-back/data/
+
 # Claude
 .claude/
 

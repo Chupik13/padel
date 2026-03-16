@@ -8,4 +8,5 @@ public class Match
     public List<TeamMatch> TeamMatches { get; set; } = [];
     public int MatchOrder { get; set; }
     public DateTime? StartedAt { get; set; }
+    public List<MatchVideo> Videos { get; set; } = [];
 }

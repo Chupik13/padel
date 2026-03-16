@@ -64,6 +64,12 @@ export async function earlyFinishTournament(id: number): Promise<void> {
   }
 }
 
+export function startGame(id: number): Promise<void> {
+  return apiFetch<void>(`/api/tournaments/${id}/start-game`, {
+    method: 'PUT',
+  });
+}
+
 export function getClubActiveTournaments(): Promise<TournamentResult[]> {
   return apiFetch<TournamentResult[]>('/api/tournaments/club-active');
 }

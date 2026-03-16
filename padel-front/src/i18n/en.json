@@ -370,7 +370,9 @@
     "action_create_super_game": "Create super game",
     "action_assign_badge": "Assign badge",
     "action_remove_badge": "Remove badge",
-    "action_send_feedback": "Send feedback"
+    "action_send_feedback": "Send feedback",
+    "action_register_operator": "Register operator",
+    "action_start_game": "Start game"
   },
   "lateSelect": {
     "checkbox": "Someone is running late",
@@ -380,6 +382,29 @@
   "common": {
     "back": "Back",
     "cancel": "Cancel"
+  },
+  "video": {
+    "operatorMode": "Start recording",
+    "selectSide": "Choose your role",
+    "side1": "Side 1",
+    "side2": "Side 2",
+    "recording": "Recording",
+    "uploading": "Uploading...",
+    "uploaded": "Uploaded",
+    "uploadFailed": "Upload failed",
+    "cameraAccessDenied": "Camera access denied",
+    "streamInterrupted": "Recording interrupted (call or screen lock)",
+    "watch": "Watch",
+    "noVideo": "No video",
+    "merging": "Processing...",
+    "exitOperator": "Exit operator mode",
+    "joinAsOperator": "Become operator",
+    "spectate": "Watch scores",
+    "operatorsConnected": "Operators: {{count}}/2",
+    "useVideoMode": "Video recording tools",
+    "waitingForOperators": "Waiting for operators...",
+    "operatorsRecording": "Operators recording: {{count}}/2",
+    "startGame": "Start Game"
   },
   "table": {
     "name": "Name",

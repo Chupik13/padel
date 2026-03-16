@@ -19,6 +19,7 @@ import SettingsPage from './pages/SettingsPage';
 import AwardsAdminPage from './pages/AwardsAdminPage';
 import LogsPage from './pages/LogsPage';
 import { useAuth } from './context/AuthContext';
+import { getActiveTournament } from './api/tournaments';
 import './App.css';
 
 export default function App() {
@@ -30,12 +31,21 @@ export default function App() {
   useEffect(() => {
     if (loading || !user || versionChecked.current) return;
     versionChecked.current = true;
+
     const lastSeen = localStorage.getItem('lastSeenVersion');
     if (lastSeen !== __APP_VERSION__) {
       localStorage.setItem('lastSeenVersion', __APP_VERSION__);
       if (location.pathname !== '/changelog') {
         navigate('/changelog?highlight=latest', { replace: true });
+        return;
       }
+    }
+
+    // Redirect to active tournament if user is on a different page
+    if (location.pathname !== '/play') {
+      getActiveTournament().then((t) => {
+        if (t) navigate('/play', { replace: true });
+      }).catch(() => {});
     }
   }, [loading, user, navigate, location.pathname]);
 

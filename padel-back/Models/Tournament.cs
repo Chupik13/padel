@@ -16,4 +16,6 @@ public class Tournament
     public DateTime? FinishedAt { get; set; }
     public int? ClubId { get; set; }
     public Club? Club { get; set; }
+    public bool HasVideoMode { get; set; }
+    public bool IsGameStarted { get; set; }
 }

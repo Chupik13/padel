@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.2.0] — 2026-03-16
+
+### Added
+
+- **Match video recording** — new system for recording matches from two angles.
+  - "Video recording tools" checkbox when creating a tournament activates video mode.
+  - Two operators join the tournament and choose a side (Side 1 / Side 2).
+  - Waiting mode: the game doesn't start until both operators begin recording. The host presses "Start Game" when both are ready.
+  - Automatic recording of each match with server upload (3 retry attempts on failure).
+  - Video playback in tournament history — "Watch" button for each match.
+  - Automatic merge of two angles into a side-by-side video via FFmpeg.
+  - Alignment of different-length videos by end (when one operator's recording is interrupted).
+  - Screen Wake Lock to prevent screen dimming for operators.
+  - Video stream interruption detection (phone call, screen lock) with reconnection support.
+  - Background service `VideoMergeBackgroundService` for automatic merge.
+- **Auto-enter active tournament** — when opening the app, players are automatically redirected to their active tournament.
+- **Video action auditing** — logging of operator registration and game start events.
+
+### Improved
+
+- **Server alternation** — the algorithm now tracks the first server for each pair separately, ensuring even rotation.
+- **SPA caching** — nginx now serves `index.html` with `no-cache` header, ensuring app updates on new deployments.
+- **Mini profile** — increased spacing between avatar and name in the side menu.
+
+---
+
 ## [2.1.0] — 2026-03-16
 
 ### Added
