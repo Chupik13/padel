@@ -227,13 +227,16 @@ public class TournamentService(PadelDbContext db)
 
     public async Task<bool> FinishTournament(int tournamentId, int hostPlayerId, bool isAdmin = false)
     {
-        var tournament = await db.Tournaments.FirstOrDefaultAsync(t => t.Id == tournamentId);
+        var tournament = await FullTournamentQuery().FirstOrDefaultAsync(t => t.Id == tournamentId);
         if (tournament is null || (!isAdmin && tournament.HostPlayerId != hostPlayerId))
             return false;
 
         tournament.IsFinished = true;
         tournament.FinishedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
+
+        await TryAwardSuperGameMedals(tournament);
+        await TryAwardOnFire(tournament);
         return true;
     }
 
@@ -265,6 +268,9 @@ public class TournamentService(PadelDbContext db)
         tournament.IsFinished = true;
         tournament.FinishedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
+
+        await TryAwardSuperGameMedals(tournament);
+        await TryAwardOnFire(tournament);
         return (true, null);
     }
 
@@ -325,6 +331,261 @@ public class TournamentService(PadelDbContext db)
 
         var tournaments = await query.OrderByDescending(t => t.Date).ToListAsync();
         return tournaments.Select(TournamentMapper.ToResult).ToList();
+    }
+
+    private static readonly string[] MedalKeys = ["gold_medal", "silver_medal", "bronze_medal"];
+    private static readonly string[] SuperGameBadgeKeys = ["gold_medal", "silver_medal", "bronze_medal", "most_active", "almost_win", "almost_loss"];
+
+    private async Task TryAwardSuperGameMedals(Tournament tournament)
+    {
+        // Check if this tournament is a super game for some season
+        var season = await db.Seasons
+            .Include(s => s.Tournaments)
+                .ThenInclude(t => t.Matches)
+                    .ThenInclude(m => m.TeamMatches)
+                        .ThenInclude(tm => tm.Team)
+                            .ThenInclude(t => t.PlayerTeams)
+                                .ThenInclude(pt => pt.Player)
+            .FirstOrDefaultAsync(s => s.SuperGameTournamentId == tournament.Id);
+        if (season is null) return;
+
+        // Calculate podium (top 3 by average score)
+        var playerScores = new Dictionary<int, (int PlayerId, double Total, int Count)>();
+        foreach (var match in tournament.Matches)
+        {
+            foreach (var tm in match.TeamMatches)
+            {
+                foreach (var pt in tm.Team.PlayerTeams)
+                {
+                    if (!playerScores.ContainsKey(pt.PlayerId))
+                        playerScores[pt.PlayerId] = (pt.PlayerId, 0, 0);
+                    var cur = playerScores[pt.PlayerId];
+                    playerScores[pt.PlayerId] = (pt.PlayerId, cur.Total + tm.Score, cur.Count + 1);
+                }
+            }
+        }
+
+        var podium = playerScores.Values
+            .Where(x => x.Count > 0)
+            .OrderByDescending(x => x.Total / x.Count)
+            .Take(3)
+            .ToList();
+
+        if (podium.Count == 0) return;
+
+        // Get all badge types needed for super game awards
+        var badgeTypes = await db.BadgeTypes
+            .Where(bt => SuperGameBadgeKeys.Contains(bt.Key))
+            .ToListAsync();
+
+        var badgeByKey = badgeTypes.ToDictionary(bt => bt.Key);
+
+        // Season number for note
+        var allSeasons = await db.Seasons.OrderBy(s => s.SeasonStart).ToListAsync();
+        var seasonNumber = allSeasons.FindIndex(s => s.Id == season.Id) + 1;
+        var seasonNote = $"Сезон {seasonNumber}";
+
+        // Award medals (gold/silver/bronze)
+        for (var i = 0; i < podium.Count && i < MedalKeys.Length; i++)
+        {
+            if (!badgeByKey.TryGetValue(MedalKeys[i], out var badgeType)) continue;
+
+            var alreadyAwarded = await db.PlayerBadges.AnyAsync(pb =>
+                pb.PlayerId == podium[i].PlayerId &&
+                pb.BadgeTypeId == badgeType.Id &&
+                pb.Note == seasonNote);
+            if (alreadyAwarded) continue;
+
+            db.PlayerBadges.Add(new PlayerBadge
+            {
+                PlayerId = podium[i].PlayerId,
+                BadgeTypeId = badgeType.Id,
+                AwardedAt = DateTime.UtcNow,
+                Note = seasonNote
+            });
+        }
+
+        // Award most_active: player with most tournaments in the season
+        if (badgeByKey.TryGetValue("most_active", out var mostActiveBadge))
+        {
+            var finishedTournaments = season.Tournaments.Where(t => t.IsFinished && !t.IsCancelled).ToList();
+            var tournamentCounts = new Dictionary<int, int>();
+            foreach (var t in finishedTournaments)
+            {
+                var playerIds = t.Matches
+                    .SelectMany(m => m.TeamMatches)
+                    .SelectMany(tm => tm.Team.PlayerTeams)
+                    .Select(pt => pt.PlayerId)
+                    .Distinct();
+                foreach (var pid in playerIds)
+                {
+                    tournamentCounts.TryGetValue(pid, out var count);
+                    tournamentCounts[pid] = count + 1;
+                }
+            }
+
+            if (tournamentCounts.Count > 0)
+            {
+                var maxCount = tournamentCounts.Values.Max();
+                var mostActivePlayerId = tournamentCounts.First(kv => kv.Value == maxCount).Key;
+
+                var alreadyAwarded = await db.PlayerBadges.AnyAsync(pb =>
+                    pb.PlayerId == mostActivePlayerId &&
+                    pb.BadgeTypeId == mostActiveBadge.Id &&
+                    pb.Note == seasonNote);
+                if (!alreadyAwarded)
+                {
+                    db.PlayerBadges.Add(new PlayerBadge
+                    {
+                        PlayerId = mostActivePlayerId,
+                        BadgeTypeId = mostActiveBadge.Id,
+                        AwardedAt = DateTime.UtcNow,
+                        Note = seasonNote
+                    });
+                }
+            }
+        }
+
+        // Award almost_win / almost_loss
+        var leaderBoard = SeasonService.BuildLeaderBoard(season);
+        var ratingFirstId = leaderBoard.Players.FirstOrDefault()?.Player.Id;
+        var superGameFirstId = podium.FirstOrDefault().PlayerId;
+
+        if (ratingFirstId.HasValue && superGameFirstId != 0 && ratingFirstId.Value != superGameFirstId)
+        {
+            // almost_win: 1st in rating but NOT 1st in super game
+            if (badgeByKey.TryGetValue("almost_win", out var almostWinBadge))
+            {
+                var alreadyAwarded = await db.PlayerBadges.AnyAsync(pb =>
+                    pb.PlayerId == ratingFirstId.Value &&
+                    pb.BadgeTypeId == almostWinBadge.Id &&
+                    pb.Note == seasonNote);
+                if (!alreadyAwarded)
+                {
+                    db.PlayerBadges.Add(new PlayerBadge
+                    {
+                        PlayerId = ratingFirstId.Value,
+                        BadgeTypeId = almostWinBadge.Id,
+                        AwardedAt = DateTime.UtcNow,
+                        Note = seasonNote
+                    });
+                }
+            }
+
+            // almost_loss: 1st in super game but NOT 1st in rating
+            if (badgeByKey.TryGetValue("almost_loss", out var almostLossBadge))
+            {
+                var alreadyAwarded = await db.PlayerBadges.AnyAsync(pb =>
+                    pb.PlayerId == superGameFirstId &&
+                    pb.BadgeTypeId == almostLossBadge.Id &&
+                    pb.Note == seasonNote);
+                if (!alreadyAwarded)
+                {
+                    db.PlayerBadges.Add(new PlayerBadge
+                    {
+                        PlayerId = superGameFirstId,
+                        BadgeTypeId = almostLossBadge.Id,
+                        AwardedAt = DateTime.UtcNow,
+                        Note = seasonNote
+                    });
+                }
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    private async Task TryAwardOnFire(Tournament tournament)
+    {
+        // Only for seasonal tournaments (not super games)
+        if (tournament.SeasonId is null) return;
+        var season = await db.Seasons.FirstOrDefaultAsync(s => s.Id == tournament.SeasonId);
+        if (season is null || season.SuperGameTournamentId == tournament.Id) return;
+
+        // Find the winner of this tournament (top by avg score)
+        var playerScores = new Dictionary<int, (int PlayerId, double Total, int Count)>();
+        foreach (var match in tournament.Matches)
+        {
+            foreach (var tm in match.TeamMatches)
+            {
+                foreach (var pt in tm.Team.PlayerTeams)
+                {
+                    if (!playerScores.ContainsKey(pt.PlayerId))
+                        playerScores[pt.PlayerId] = (pt.PlayerId, 0, 0);
+                    var cur = playerScores[pt.PlayerId];
+                    playerScores[pt.PlayerId] = (pt.PlayerId, cur.Total + tm.Score, cur.Count + 1);
+                }
+            }
+        }
+
+        var winner = playerScores.Values
+            .Where(x => x.Count > 0)
+            .OrderByDescending(x => x.Total / x.Count)
+            .FirstOrDefault();
+        if (winner.PlayerId == 0) return;
+
+        // Get last 3 finished seasonal tournaments for this season (including current one)
+        var recentTournaments = await db.Tournaments
+            .Include(t => t.Matches)
+                .ThenInclude(m => m.TeamMatches)
+                    .ThenInclude(tm => tm.Team)
+                        .ThenInclude(t => t.PlayerTeams)
+            .Where(t => t.SeasonId == tournament.SeasonId && t.IsFinished && !t.IsCancelled)
+            .Where(t => season.SuperGameTournamentId == null || t.Id != season.SuperGameTournamentId)
+            .OrderByDescending(t => t.Date)
+            .Take(3)
+            .ToListAsync();
+
+        if (recentTournaments.Count < 3) return;
+
+        // Check if the winner won all 3 tournaments
+        var wonAll = recentTournaments.All(t =>
+        {
+            var scores = new Dictionary<int, (double Total, int Count)>();
+            foreach (var m in t.Matches)
+            {
+                foreach (var tm in m.TeamMatches)
+                {
+                    foreach (var pt in tm.Team.PlayerTeams)
+                    {
+                        if (!scores.ContainsKey(pt.PlayerId))
+                            scores[pt.PlayerId] = (0, 0);
+                        var c = scores[pt.PlayerId];
+                        scores[pt.PlayerId] = (c.Total + tm.Score, c.Count + 1);
+                    }
+                }
+            }
+            var topPlayer = scores
+                .Where(x => x.Value.Count > 0)
+                .OrderByDescending(x => x.Value.Total / x.Value.Count)
+                .FirstOrDefault();
+            return topPlayer.Key == winner.PlayerId;
+        });
+
+        if (!wonAll) return;
+
+        var onFireBadge = await db.BadgeTypes.FirstOrDefaultAsync(bt => bt.Key == "on_fire");
+        if (onFireBadge is null) return;
+
+        // Season note for deduplication
+        var allSeasons = await db.Seasons.OrderBy(s => s.SeasonStart).ToListAsync();
+        var seasonNumber = allSeasons.FindIndex(s => s.Id == season.Id) + 1;
+        var seasonNote = $"Сезон {seasonNumber}";
+
+        var alreadyAwarded = await db.PlayerBadges.AnyAsync(pb =>
+            pb.PlayerId == winner.PlayerId &&
+            pb.BadgeTypeId == onFireBadge.Id &&
+            pb.Note == seasonNote);
+        if (alreadyAwarded) return;
+
+        db.PlayerBadges.Add(new PlayerBadge
+        {
+            PlayerId = winner.PlayerId,
+            BadgeTypeId = onFireBadge.Id,
+            AwardedAt = DateTime.UtcNow,
+            Note = seasonNote
+        });
+        await db.SaveChangesAsync();
     }
 
     private async Task<Team> FindOrCreateTeam(int player1Id, int player2Id)

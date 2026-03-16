@@ -149,7 +149,7 @@ public class SeasonService(PadelDbContext db, TournamentService tournamentServic
         };
     }
 
-    private static LeaderBoardResult BuildLeaderBoard(Season season, int? clubId = null)
+    internal static LeaderBoardResult BuildLeaderBoard(Season season, int? clubId = null)
     {
         var playerTournamentAvgs = new Dictionary<int, (Player Player, List<(double Average, DateTime Date)> Entries)>();
 

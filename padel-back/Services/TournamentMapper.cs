@@ -10,7 +10,8 @@ public static class TournamentMapper
         Id = player.Id,
         Name = player.Name,
         Login = player.Login,
-        ImageUrl = player.ImageUrl
+        ImageUrl = player.ImageUrl,
+        IsAdmin = player.IsAdmin
     };
 
     public static TournamentResult ToResult(Tournament tournament)

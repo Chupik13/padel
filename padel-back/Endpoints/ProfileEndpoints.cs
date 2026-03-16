@@ -26,7 +26,7 @@ public static class ProfileEndpoints
             return result is null ? Results.NotFound() : Results.Ok(result);
         });
 
-        group.MapPost("/avatar", async (IFormFile file, HttpContext httpContext, PadelDbContext db, AvatarService avatarService) =>
+        group.MapPost("/avatar", async (IFormFile file, HttpContext httpContext, PadelDbContext db, AvatarService avatarService, AuditLogService auditLogService) =>
         {
             var login = httpContext.User.FindFirstValue(ClaimTypes.Name)!;
             var player = await db.Players.FirstOrDefaultAsync(p => p.Login == login);
@@ -36,10 +36,11 @@ public static class ProfileEndpoints
             player.ImageUrl = await avatarService.ProcessAndSaveAvatar(stream, player.Id);
             await db.SaveChangesAsync();
 
+            await auditLogService.Log(player.Id, "update_avatar");
             return Results.Ok();
         }).DisableAntiforgery();
 
-        group.MapPut("/name", async (UpdateNameRequest request, HttpContext httpContext, PadelDbContext db) =>
+        group.MapPut("/name", async (UpdateNameRequest request, HttpContext httpContext, PadelDbContext db, AuditLogService auditLogService) =>
         {
             if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Length > 50)
                 return Results.BadRequest();
@@ -48,8 +49,10 @@ public static class ProfileEndpoints
             var player = await db.Players.FirstOrDefaultAsync(p => p.Login == login);
             if (player is null) return Results.NotFound();
 
+            var oldName = player.Name;
             player.Name = request.Name.Trim();
             await db.SaveChangesAsync();
+            await auditLogService.Log(player.Id, "update_name", $"{oldName} -> {player.Name}");
             return Results.Ok();
         });
 

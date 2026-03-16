@@ -62,7 +62,7 @@ public class TournamentAutoCleanupService(IServiceProvider serviceProvider, ILog
                 m.TeamMatches.Count >= 2 && (m.TeamMatches[0].Score != 0 || m.TeamMatches[1].Score != 0));
             var ratio = totalMatches > 0 ? (double)playedMatches / totalMatches : 0;
 
-            if (ratio < MinPlayedRatio)
+            if (tournament.SeasonId != null || ratio < MinPlayedRatio)
             {
                 // Cancel
                 var season = await db.Seasons.FirstOrDefaultAsync(s => s.SuperGameTournamentId == tournament.Id, ct);

@@ -6,6 +6,7 @@ export interface UserResult {
   name: string;
   imageUrl: string | null;
   hasEmail: boolean;
+  isAdmin: boolean;
 }
 
 export interface ClubMiniResult {
@@ -28,6 +29,7 @@ export interface ClubResult {
   imageUrl: string | null;
   memberCount: number;
   isPrimary: boolean;
+  ownerPlayerId?: number;
 }
 
 export interface ProfileResult {
@@ -37,6 +39,8 @@ export interface ProfileResult {
   currentSeason: SeasonStatisticResult | null;
   previousSeasons: SeasonStatisticResult[];
   playerTournaments: TournamentResult[];
+  badges: PlayerBadgeResult[];
+  isAdmin: boolean;
 }
 
 export interface SeasonStatisticResult {
@@ -54,6 +58,7 @@ export interface PlayerResult {
   name: string;
   login: string;
   imageUrl: string | null;
+  isAdmin: boolean;
 }
 
 export interface MatchResult {
@@ -208,4 +213,39 @@ export interface UpdateScoreRequest {
   matchIndex: number;
   teamOneScore: number;
   teamTwoScore: number;
+}
+
+export interface BadgeTypeResult {
+  id: number;
+  key: string;
+  nameRu: string;
+  nameEn: string;
+  emoji: string;
+}
+
+export interface PlayerBadgeResult {
+  id: number;
+  playerId: number;
+  badgeTypeId: number;
+  badgeKey: string;
+  badgeNameRu: string;
+  badgeNameEn: string;
+  badgeEmoji: string;
+  awardedAt: string;
+  note: string | null;
+}
+
+export interface AssignBadgeRequest {
+  playerId: number;
+  badgeTypeId: number;
+  note?: string;
+}
+
+export interface AuditLogResult {
+  id: number;
+  timestamp: string;
+  playerName: string | null;
+  playerLogin: string | null;
+  action: string;
+  details: string | null;
 }

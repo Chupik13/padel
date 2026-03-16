@@ -12,6 +12,8 @@
     "rating": "Rating: {{score}}",
     "openMenu": "Open menu",
     "club": "Club",
+    "awards": "Awards",
+    "logs": "Logs",
     "feedback": "Feedback"
   },
   "login": {
@@ -127,11 +129,11 @@
     "currentSeason": "Current season",
     "previousSeasons": "Previous seasons",
     "season": "Season {{number}}",
-    "place1": "1st place",
-    "place2": "2nd place",
-    "place3": "3rd place",
+    "place1": "Gold",
+    "place2": "Silver",
+    "place3": "Bronze",
     "awards": "Awards",
-    "awardText": "Season {{season}} — {{place}}",
+    "awardText": "{{place}} — Season {{season}}",
     "overallStats": "Overall stats",
     "games": "Games",
     "points": "Points",
@@ -234,7 +236,11 @@
     "setPrimary": "Set as primary",
     "primary": "Primary",
     "alreadyMember": "Already a member",
-    "avatarError": "Failed to upload avatar"
+    "avatarError": "Failed to upload avatar",
+    "archive": "Delete club",
+    "archiveConfirm": "Delete «{{name}}»? All members will be removed from the club. This action is irreversible.",
+    "archiveError": "Failed to archive club",
+    "archiveBlocked": "Cannot archive club with unfinished tournaments"
   },
   "emailPrompt": {
     "title": "Enter your email",
@@ -267,7 +273,8 @@
     "save": "Save",
     "saving": "Saving...",
     "saved": "Settings updated",
-    "saveError": "Failed to save"
+    "saveError": "Failed to save",
+    "showGuides": "Show guides"
   },
   "feedback": {
     "title": "Feedback",
@@ -284,6 +291,91 @@
     "sending": "Sending...",
     "sent": "Message sent!",
     "sendError": "Failed to send message"
+  },
+  "guide": {
+    "ok": "Got it",
+    "play": {
+      "title": "Play",
+      "text": "Create 2v2 tournaments here. Each match has 16 rallies, points are split between teams. Choose type: \"Seasonal\" — results count towards season ranking, \"Friendly\" — just for fun. Pick players and match format."
+    },
+    "profile": {
+      "title": "Profile",
+      "text": "Your stats: points, average points, ranking position and awards. Tap your avatar to upload a photo."
+    },
+    "tournaments": {
+      "title": "Tournaments",
+      "text": "All club tournaments. Tap a tournament for details. Use filters. Your tournaments are highlighted."
+    },
+    "seasons": {
+      "title": "Seasons",
+      "text": "A season is a ranked period. Your 6 best tournaments count. After the season, top 4 play a super game for podium places."
+    },
+    "club": {
+      "title": "Club",
+      "text": "A club is your playing group. You can only create tournaments with players from the same club. Create your own club or join an existing one, then invite your friends — they need to sign up and join your club too. After that you can start playing!"
+    }
+  },
+  "awards": {
+    "title": "Awards",
+    "selectPlayer": "Select player",
+    "selectBadge": "Select badge",
+    "notePlaceholder": "Note (e.g. Season 3)",
+    "assign": "Assign",
+    "assignBadge": "Assign badge",
+    "badges": "Badges",
+    "seasonMedals": "Season medals",
+    "addNote": "Add note...",
+    "selectSeason": "Select season",
+    "noSeason": "No season specified",
+    "save": "Save",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "currentBadges": "Current badges",
+    "loadError": "Failed to load data",
+    "assignError": "Failed to assign badge",
+    "removeError": "Failed to remove badge",
+    "noAccess": "No access"
+  },
+  "logs": {
+    "title": "Logs",
+    "loadError": "Failed to load logs",
+    "noAccess": "No access",
+    "time": "Time",
+    "player": "Player",
+    "action": "Action",
+    "details": "Details",
+    "empty": "No entries",
+    "prev": "Prev",
+    "next": "Next",
+    "action_register": "Registration",
+    "action_login": "Login",
+    "action_logout": "Logout",
+    "action_set_email": "Set email",
+    "action_forgot_password": "Forgot password request",
+    "action_reset_password": "Password reset",
+    "action_update_avatar": "Avatar update",
+    "action_update_name": "Name change",
+    "action_create_club": "Create club",
+    "action_join_club": "Join club",
+    "action_leave_club": "Leave club",
+    "action_set_primary_club": "Set primary club",
+    "action_archive_club": "Delete club",
+    "action_upload_club_avatar": "Upload club avatar",
+    "action_create_tournament": "Create tournament",
+    "action_create_live_tournament": "Create live tournament",
+    "action_finish_tournament": "Finish tournament",
+    "action_early_finish_tournament": "Early finish",
+    "action_cancel_tournament": "Cancel tournament",
+    "action_delete_tournament": "Delete tournament",
+    "action_create_super_game": "Create super game",
+    "action_assign_badge": "Assign badge",
+    "action_remove_badge": "Remove badge",
+    "action_send_feedback": "Send feedback"
+  },
+  "lateSelect": {
+    "checkbox": "Someone is running late",
+    "subtitle": "Mark up to {{max}} player(s) running late. They'll rest in the first matches",
+    "lateBadge": "Late"
   },
   "common": {
     "back": "Back",

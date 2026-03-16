@@ -38,7 +38,7 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      <button className="lang-toggle auth-lang-toggle" onClick={toggleLang}>
+      <button className="auth-lang-toggle" onClick={toggleLang}>
         {i18n.language === 'ru' ? 'EN' : 'RU'}
       </button>
       <h1 className="title">{t('app.title')}</h1>

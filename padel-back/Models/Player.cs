@@ -10,4 +10,6 @@ public class Player
     public Club? Club { get; set; }
     public List<PlayerTeam> PlayerTeams { get; set; } = [];
     public List<PlayerClub> PlayerClubs { get; set; } = [];
+    public bool IsAdmin { get; set; }
+    public List<PlayerBadge> PlayerBadges { get; set; } = [];
 }

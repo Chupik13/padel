@@ -13,7 +13,7 @@ public static class FeedbackEndpoints
     {
         var group = app.MapGroup("/api/feedback");
 
-        group.MapPost("/", async (FeedbackRequest request, HttpContext httpContext, PadelDbContext db, EmailService emailService) =>
+        group.MapPost("/", async (FeedbackRequest request, HttpContext httpContext, PadelDbContext db, EmailService emailService, AuditLogService auditLogService) =>
         {
             if (string.IsNullOrWhiteSpace(request.Message))
                 return Results.BadRequest(new { message = "Message is required" });
@@ -52,6 +52,7 @@ public static class FeedbackEndpoints
                 return Results.StatusCode(500);
             }
 
+            await auditLogService.Log(playerId, "send_feedback", request.Subject);
             return Results.Ok();
         }).RequireAuthorization();
     }

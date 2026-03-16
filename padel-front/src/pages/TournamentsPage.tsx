@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import type { TournamentResult, MatchResult, PlayerResult } from '../types/api';
 import { getTournaments, deleteTournamentPermanent } from '../api/tournaments';
 import { useAuth } from '../context/AuthContext';
+import GuideModal from '../components/GuideModal';
+import { useGuide } from '../hooks/useGuide';
 
 export default function TournamentsPage() {
   const [tournaments, setTournaments] = useState<TournamentResult[]>([]);
@@ -20,8 +22,8 @@ export default function TournamentsPage() {
   const { t, i18n } = useTranslation();
   const dateFmt = i18n.language === 'ru' ? 'ru-RU' : 'en-US';
 
-  const ADMIN_LOGIN = 't224215';
-  const isAdmin = user?.login === ADMIN_LOGIN;
+  const isAdmin = user?.isAdmin ?? false;
+  const { showGuide, dismissGuide } = useGuide('tournaments');
 
   const handleDelete = async (id: number) => {
     try {
@@ -238,6 +240,7 @@ export default function TournamentsPage() {
           </div>
         ))}
       </div>
+      {showGuide && <GuideModal page="tournaments" onClose={dismissGuide} />}
     </div>
   );
 }

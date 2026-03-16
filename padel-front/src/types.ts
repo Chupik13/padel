@@ -1,4 +1,4 @@
-export type Player = { id: number; name: string; imageUrl?: string | null };
+export type Player = { id: number; name: string; imageUrl?: string | null; isAdmin?: boolean };
 
 export type TournamentFormat = 'balanced' | 'fixed-5' | 'fixed-10';
 

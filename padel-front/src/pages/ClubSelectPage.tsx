@@ -2,10 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { getClubs, getClubMembers, joinClub, createClub, leaveClub, setPrimaryClub, uploadClubAvatar } from '../api/clubs';
+import { getClubs, getClubMembers, joinClub, createClub, leaveClub, setPrimaryClub, uploadClubAvatar, archiveClub } from '../api/clubs';
 import { getGlobalLeaderboard } from '../api/players';
 import type { ClubResult, PlayerResult, GlobalPlayerStats } from '../types/api';
 import InfoTip from '../components/InfoTip';
+import GuideModal from '../components/GuideModal';
+import { useGuide } from '../hooks/useGuide';
 
 interface MemberRow {
   player: PlayerResult;
@@ -18,9 +20,10 @@ interface MemberRow {
 }
 
 export default function ClubSelectPage() {
-  const { miniProfile, refreshMiniProfile } = useAuth();
+  const { user, miniProfile, refreshMiniProfile } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { showGuide, dismissGuide } = useGuide('club');
 
   const [clubs, setClubs] = useState<ClubResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +41,8 @@ export default function ClubSelectPage() {
   const [detailMembers, setDetailMembers] = useState<MemberRow[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showJoinConfirm, setShowJoinConfirm] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [archiving, setArchiving] = useState(false);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -166,6 +171,26 @@ export default function ClubSelectPage() {
     }
   };
 
+  const handleArchive = async (clubId: number) => {
+    setArchiving(true);
+    setError('');
+    try {
+      await archiveClub(clubId);
+      await refreshMiniProfile();
+      const updated = await getClubs();
+      setClubs(updated);
+      setShowArchiveConfirm(false);
+      setShowMenu(false);
+      setSelectedClubId(null);
+    } catch {
+      setError(t('club.archiveError'));
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  const isAdmin = user?.isAdmin ?? false;
+
   if (loading) {
     return (
       <div className="screen center-content">
@@ -210,14 +235,14 @@ export default function ClubSelectPage() {
               }}
             />
             <h2 className="screen-title">{selectedClub?.name ?? '...'}</h2>
-            {isMember && (
+            {(isMember || isAdmin) && (
               <div className="club-menu-wrapper">
                 <button className="club-menu-btn" onClick={() => setShowMenu((v) => !v)}>&#9662;</button>
                 {showMenu && (
                   <>
                     <div className="club-menu-backdrop" onClick={() => setShowMenu(false)} />
                     <div className="club-menu-dropdown">
-                      {!isPrimary && (
+                      {isMember && !isPrimary && (
                         <button
                           className="club-menu-dropdown-item"
                           onClick={() => { handleSetPrimary(selectedClubId); setShowMenu(false); }}
@@ -225,13 +250,23 @@ export default function ClubSelectPage() {
                           {t('club.setPrimary')}
                         </button>
                       )}
-                      <button
-                        className="club-menu-dropdown-item danger"
-                        onClick={() => handleLeave(selectedClubId)}
-                        disabled={leaving}
-                      >
-                        {leaving ? '...' : t('club.leave')}
-                      </button>
+                      {isMember && (
+                        <button
+                          className="club-menu-dropdown-item danger"
+                          onClick={() => handleLeave(selectedClubId)}
+                          disabled={leaving}
+                        >
+                          {leaving ? '...' : t('club.leave')}
+                        </button>
+                      )}
+                      {(selectedClub?.ownerPlayerId === user?.id || isAdmin) && selectedClub && (
+                        <button
+                          className="club-menu-dropdown-item danger"
+                          onClick={() => { setShowArchiveConfirm(true); setShowMenu(false); }}
+                        >
+                          {t('club.archive')}
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
@@ -241,6 +276,16 @@ export default function ClubSelectPage() {
         </div>
 
         {error && <p className="error">{error}</p>}
+
+        {!isMember && !detailLoading && (
+          <button
+            className="btn btn-primary club-join-btn"
+            onClick={() => setShowJoinConfirm(true)}
+            disabled={joining}
+          >
+            {t('club.join')}
+          </button>
+        )}
 
         {detailLoading ? (
           <div className="center-content">
@@ -285,16 +330,6 @@ export default function ClubSelectPage() {
           </div>
         )}
 
-        {!isMember && !detailLoading && (
-          <button
-            className="btn btn-primary club-join-btn"
-            onClick={() => setShowJoinConfirm(true)}
-            disabled={joining}
-          >
-            {t('club.join')}
-          </button>
-        )}
-
         {showJoinConfirm && selectedClub && (
           <>
             <div className="club-menu-backdrop" onClick={() => setShowJoinConfirm(false)} />
@@ -311,6 +346,30 @@ export default function ClubSelectPage() {
                 <button
                   className="btn"
                   onClick={() => setShowJoinConfirm(false)}
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {showArchiveConfirm && selectedClub && (
+          <>
+            <div className="club-menu-backdrop" onClick={() => setShowArchiveConfirm(false)} />
+            <div className="confirm-modal">
+              <p>{t('club.archiveConfirm', { name: selectedClub.name })}</p>
+              <div className="confirm-modal-actions">
+                <button
+                  className="btn btn-primary danger"
+                  onClick={() => handleArchive(selectedClub.id)}
+                  disabled={archiving}
+                >
+                  {archiving ? '...' : t('club.archive')}
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => setShowArchiveConfirm(false)}
                 >
                   {t('common.cancel')}
                 </button>
@@ -424,6 +483,7 @@ export default function ClubSelectPage() {
           {t('club.create')}
         </button>
       )}
+      {showGuide && <GuideModal page="club" onClose={dismissGuide} />}
     </div>
   );
 }

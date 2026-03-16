@@ -15,6 +15,9 @@ public class PadelDbContext(DbContextOptions<PadelDbContext> options) : DbContex
     public DbSet<Club> Clubs => Set<Club>();
     public DbSet<PlayerClub> PlayerClubs => Set<PlayerClub>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<BadgeType> BadgeTypes => Set<BadgeType>();
+    public DbSet<PlayerBadge> PlayerBadges => Set<PlayerBadge>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -75,6 +78,14 @@ public class PadelDbContext(DbContextOptions<PadelDbContext> options) : DbContex
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
+        modelBuilder.Entity<Club>(entity =>
+        {
+            entity.HasOne(c => c.OwnerPlayer)
+                .WithMany()
+                .HasForeignKey(c => c.OwnerPlayerId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
         modelBuilder.Entity<PlayerClub>(entity =>
         {
             entity.HasIndex(pc => new { pc.PlayerId, pc.ClubId }).IsUnique();
@@ -99,6 +110,31 @@ public class PadelDbContext(DbContextOptions<PadelDbContext> options) : DbContex
             entity.HasOne(s => s.SuperGameTournament)
                 .WithOne()
                 .HasForeignKey<Season>(s => s.SuperGameTournamentId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<BadgeType>(entity =>
+        {
+            entity.HasIndex(bt => bt.Key).IsUnique();
+        });
+
+        modelBuilder.Entity<PlayerBadge>(entity =>
+        {
+            entity.HasIndex(pb => new { pb.PlayerId, pb.BadgeTypeId });
+            entity.HasOne(pb => pb.Player)
+                .WithMany(p => p.PlayerBadges)
+                .HasForeignKey(pb => pb.PlayerId);
+            entity.HasOne(pb => pb.BadgeType)
+                .WithMany(bt => bt.PlayerBadges)
+                .HasForeignKey(pb => pb.BadgeTypeId);
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.HasIndex(l => l.Timestamp);
+            entity.HasOne(l => l.Player)
+                .WithMany()
+                .HasForeignKey(l => l.PlayerId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
     }

@@ -7,6 +7,7 @@ public class ClubResult
     public string? ImageUrl { get; set; }
     public int MemberCount { get; set; }
     public bool IsPrimary { get; set; }
+    public int? OwnerPlayerId { get; set; }
 }
 
 public class ClubMiniResult

@@ -6,6 +6,8 @@ import { getSeasons, createSuperGame } from '../api/seasons';
 import { useAuth } from '../context/AuthContext';
 import ScoreChart from '../components/ScoreChart';
 import { generateFixedSchedule } from '../utils/scheduler';
+import GuideModal from '../components/GuideModal';
+import { useGuide } from '../hooks/useGuide';
 
 export default function SeasonsPage() {
   const [seasons, setSeasons] = useState<SeasonResult[]>([]);
@@ -17,6 +19,7 @@ export default function SeasonsPage() {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const dateFmt = i18n.language === 'ru' ? 'ru-RU' : 'en-US';
+  const { showGuide, dismissGuide } = useGuide('seasons');
 
   useEffect(() => {
     getSeasons()
@@ -127,10 +130,10 @@ export default function SeasonsPage() {
               <div className="super-game-podium">
                 <div className="super-game-title">{t('seasons.superGame')}</div>
                 {season.superGame.podium.map((p, i) => {
-                  const medals = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
+                  const medalSvgs = ['/badges/gold-medal.svg', '/badges/silver-medal.svg', '/badges/bronze-medal.svg'];
                   return (
                     <div key={p.player.id} className={`podium-place podium-place-${i + 1}`}>
-                      <span className="podium-medal">{medals[i]}</span>
+                      <span className="podium-medal"><img src={medalSvgs[i]} alt="" className="badge-icon" /></span>
                       <span className="podium-name">{p.player.name}</span>
                       <span className="podium-score">{p.score.toFixed(2)}</span>
                     </div>
@@ -161,11 +164,11 @@ export default function SeasonsPage() {
                   {(() => {
                     const seasonEnded = !season.isCurrent && new Date(season.seasonEnd) <= new Date();
                     const awaitingSuperGame = seasonEnded && !season.superGame;
-                    const medals = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
+                    const medalSvgs = ['/badges/gold-medal.svg', '/badges/silver-medal.svg', '/badges/bronze-medal.svg'];
                     const superGameMedals = new Map<number, string>();
                     if (season.superGame?.isFinished) {
                       season.superGame.podium.forEach((p, i) => {
-                        if (i < 3) superGameMedals.set(p.player.id, medals[i]);
+                        if (i < 3) superGameMedals.set(p.player.id, medalSvgs[i]);
                       });
                     }
                     const skipTop3 = season.superGame?.isFinished ? 3 : 0;
@@ -194,7 +197,7 @@ export default function SeasonsPage() {
                               </span>
                               {p.player.name}
                               {superGameMedals.has(p.player.id) && (
-                                <span className="player-medal">{superGameMedals.get(p.player.id)}</span>
+                                <span className="player-medal"><img src={superGameMedals.get(p.player.id)} alt="" className="badge-icon" /></span>
                               )}
                             </span>
                           </td>
@@ -220,6 +223,7 @@ export default function SeasonsPage() {
           );
         })}
       </div>
+      {showGuide && <GuideModal page="seasons" onClose={dismissGuide} />}
     </div>
   );
 }

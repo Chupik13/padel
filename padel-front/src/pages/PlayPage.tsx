@@ -13,8 +13,8 @@ import PlayerSelectForm from '../components/PlayerSelectForm';
 import MatchView from '../components/MatchView';
 import Results from '../components/Results';
 import InfoTip from '../components/InfoTip';
-
-const ADMIN_LOGIN = 't224215';
+import GuideModal from '../components/GuideModal';
+import { useGuide } from '../hooks/useGuide';
 
 type PlayScreen = 'loading' | 'unfinished' | 'no-club' | 'select-club' | 'season-toggle' | 'select-players' | 'select-matches' | 'match' | 'results';
 
@@ -29,7 +29,7 @@ function tournamentResultToLocal(result: TournamentResult): Tournament {
   const playerMap = new Map<number, Player>();
   for (const m of result.matches) {
     for (const p of [m.teamOnePlayer1, m.teamOnePlayer2, m.teamTwoPlayer1, m.teamTwoPlayer2]) {
-      if (!playerMap.has(p.id)) playerMap.set(p.id, { id: p.id, name: p.name, imageUrl: p.imageUrl });
+      if (!playerMap.has(p.id)) playerMap.set(p.id, { id: p.id, name: p.name, imageUrl: p.imageUrl, isAdmin: p.isAdmin });
     }
   }
   const players = Array.from(playerMap.values());
@@ -85,12 +85,15 @@ export default function PlayPage() {
   const [unfinishedList, setUnfinishedList] = useState<TournamentResult[]>([]);
   const [clubActiveList, setClubActiveList] = useState<TournamentResult[]>([]);
 
+  const [latePlayerIds, setLatePlayerIds] = useState<Set<number>>(new Set());
+
   // Club selection
   const [selectedClubId, setSelectedClubId] = useState<number | undefined>();
   const [selectedClubName, setSelectedClubName] = useState('');
 
   const clubs = miniProfile?.clubs ?? [];
-  const isAdmin = user?.login === ADMIN_LOGIN;
+  const isAdmin = user?.isAdmin ?? false;
+  const { showGuide, dismissGuide } = useGuide('play');
 
   const { joinTournament, leaveTournament } = useTournamentHub({
     onScoreUpdated: (_tournamentId, matchIndex, teamOneScore, teamTwoScore) => {
@@ -246,14 +249,14 @@ export default function PlayPage() {
     setScreen('select-players');
   };
 
-  const handlePlayersSubmit = (players: PlayerResult[]) => {
+  const handlePlayersSubmit = (players: PlayerResult[], lateIds: Set<number>) => {
     setApiPlayers(players);
-    const count = players.length;
+    setLatePlayerIds(lateIds);
     if (inSeason) {
-      const opt = getSeasonalFormat(count);
+      const opt = getSeasonalFormat(players.length);
       setFormatOption(opt);
       setFormat('balanced');
-      startTournament(players, true, opt);
+      startTournament(players, true, opt, lateIds);
     } else {
       setScreen('select-matches');
     }
@@ -262,16 +265,17 @@ export default function PlayPage() {
   const handleSelectMatches = (option: FormatOption) => {
     setFormatOption(option);
     setFormat(option.generationMode === 'balanced' ? 'balanced' : 'fixed-5');
-    startTournament(apiPlayers, false, option);
+    startTournament(apiPlayers, false, option, latePlayerIds);
   };
 
-  const startTournament = async (players: PlayerResult[], seasonal: boolean, opt: FormatOption) => {
-    const localPlayers: Player[] = players.map((p) => ({ id: p.id, name: p.name }));
+  const startTournament = async (players: PlayerResult[], seasonal: boolean, opt: FormatOption, lateIds?: Set<number>) => {
+    const localPlayers: Player[] = players.map((p) => ({ id: p.id, name: p.name, imageUrl: p.imageUrl, isAdmin: p.isAdmin }));
     const ids = localPlayers.map((p) => p.id);
+    const late = lateIds && lateIds.size > 0 ? lateIds : undefined;
     const matches =
       opt.generationMode === 'balanced'
-        ? generateSchedule(ids, opt.k!)
-        : generateFixedSchedule(ids, opt.matchCount);
+        ? generateSchedule(ids, opt.k!, late)
+        : generateFixedSchedule(ids, opt.matchCount, late);
 
     try {
       const result = await createLiveTournament({
@@ -426,6 +430,7 @@ export default function PlayPage() {
     setFormat('balanced');
     setFormatOption(null);
     setApiPlayers([]);
+    setLatePlayerIds(new Set());
     setInSeason(false);
     setIsHost(false);
     setHostName(undefined);
@@ -648,6 +653,7 @@ export default function PlayPage() {
           isLive={!!tournament.id}
         />
       )}
+      {showGuide && <GuideModal page="play" onClose={dismissGuide} />}
     </>
   );
 }

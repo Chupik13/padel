@@ -8,7 +8,7 @@ public class ProfileService(PadelDbContext db)
 {
     public async Task<ProfileResult?> GetProfile(string userLogin)
     {
-        var player = await db.Players.Include(p => p.Club).FirstOrDefaultAsync(p => p.Login == userLogin);
+        var player = await db.Players.Include(p => p.Club).Include(p => p.PlayerBadges).ThenInclude(pb => pb.BadgeType).FirstOrDefaultAsync(p => p.Login == userLogin);
         if (player is null) return null;
 
         var now = DateTime.UtcNow;
@@ -31,6 +31,19 @@ public class ProfileService(PadelDbContext db)
 
         var tournamentResults = playerTournaments.Select(TournamentMapper.ToResult).ToList();
 
+        var badges = player.PlayerBadges.Select(pb => new PlayerBadgeResult
+        {
+            Id = pb.Id,
+            PlayerId = pb.PlayerId,
+            BadgeTypeId = pb.BadgeTypeId,
+            BadgeKey = pb.BadgeType.Key,
+            BadgeNameRu = pb.BadgeType.NameRu,
+            BadgeNameEn = pb.BadgeType.NameEn,
+            BadgeEmoji = pb.BadgeType.Emoji,
+            AwardedAt = pb.AwardedAt,
+            Note = pb.Note
+        }).ToList();
+
         return new ProfileResult
         {
             Id = player.Id,
@@ -38,7 +51,9 @@ public class ProfileService(PadelDbContext db)
             ImageUrl = player.ImageUrl,
             CurrentSeason = currentSeasonStat,
             PreviousSeasons = previousSeasons,
-            PlayerTournaments = tournamentResults
+            PlayerTournaments = tournamentResults,
+            Badges = badges,
+            IsAdmin = player.IsAdmin
         };
     }
 

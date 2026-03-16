@@ -26,13 +26,15 @@ public static class SeasonEndpoints
         });
 
         group.MapPost("/{id:int}/supergame", async (int id, CreateSuperGameRequest request,
-            SeasonService seasonService, HttpContext httpContext, PadelDbContext db) =>
+            SeasonService seasonService, HttpContext httpContext, PadelDbContext db, AuditLogService auditLogService) =>
         {
             var playerIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
                 return Results.Unauthorized();
             var clubId = await EndpointHelpers.GetPlayerClubId(httpContext, db);
             var result = await seasonService.CreateSuperGame(id, playerId, request, clubId);
+            if (result is not null)
+                await auditLogService.Log(playerId, "create_super_game", $"seasonId={id}");
             return result is null ? Results.BadRequest() : Results.Created($"/api/tournaments/{result.Id}", result);
         });
     }

@@ -16,6 +16,8 @@ import SeasonsPage from './pages/SeasonsPage';
 import ChangelogPage from './pages/ChangelogPage';
 import FeedbackPage from './pages/FeedbackPage';
 import SettingsPage from './pages/SettingsPage';
+import AwardsAdminPage from './pages/AwardsAdminPage';
+import LogsPage from './pages/LogsPage';
 import { useAuth } from './context/AuthContext';
 import './App.css';
 
@@ -57,6 +59,8 @@ export default function App() {
               <Route path="/changelog" element={<ChangelogPage />} />
               <Route path="/feedback" element={<FeedbackPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/awards" element={<AwardsAdminPage />} />
+              <Route path="/logs" element={<LogsPage />} />
             </Route>
           </Route>
         </Route>

@@ -31,6 +31,7 @@ export default function RegisterPage() {
     try {
       await auth.register(login.trim(), password, name.trim(), email.trim());
       localStorage.setItem('lastSeenVersion', __APP_VERSION__);
+      localStorage.setItem('showGuides', 'true');
       navigate('/play', { replace: true });
     } catch {
       setError(t('register.loginExists'));
@@ -41,7 +42,7 @@ export default function RegisterPage() {
 
   return (
     <div className="auth-page">
-      <button className="lang-toggle auth-lang-toggle" onClick={toggleLang}>
+      <button className="auth-lang-toggle" onClick={toggleLang}>
         {i18n.language === 'ru' ? 'EN' : 'RU'}
       </button>
       <h1 className="title">{t('app.title')}</h1>

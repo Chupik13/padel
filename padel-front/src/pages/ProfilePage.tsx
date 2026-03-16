@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import type { ProfileResult, TournamentResult, SeasonStatisticResult } from '../types/api';
+import type { ProfileResult, TournamentResult, SeasonStatisticResult, PlayerBadgeResult } from '../types/api';
 import { getProfile, getProfileByLogin, uploadAvatar } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
 import PartnerStats from '../components/PartnerStats';
 import HeadToHead from '../components/HeadToHead';
+import GuideModal from '../components/GuideModal';
+import { useGuide } from '../hooks/useGuide';
 
 export default function ProfilePage() {
   const { login } = useParams<{ login?: string }>();
@@ -17,6 +19,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const isOwn = !login;
   const { t } = useTranslation();
+  const { showGuide, dismissGuide } = useGuide('profile');
 
   useEffect(() => {
     setLoading(true);
@@ -69,18 +72,15 @@ export default function ProfilePage() {
         </button>
       )}
       <div className="profile-header">
-        {isOwn && (
-          <button className="settings-btn profile-settings-btn" onClick={() => navigate('/settings')} title={t('settings.title')}>
-            ⚙️
-          </button>
-        )}
-        <div className={`avatar avatar-xl ${isOwn ? 'avatar-editable' : ''}`} onClick={handleAvatarClick}>
-          {profile.imageUrl ? (
-            <img src={profile.imageUrl} alt={profile.name} />
-          ) : (
-            <span>{profile.name[0].toUpperCase()}</span>
-          )}
-          {isOwn && <div className="avatar-edit-overlay">{t('profile.edit')}</div>}
+        <div className={`avatar-wrapper${profile.isAdmin ? ' admin' : ''}`}>
+          <div className={`avatar avatar-xl ${isOwn ? 'avatar-editable' : ''}`} onClick={handleAvatarClick}>
+            {profile.imageUrl ? (
+              <img src={profile.imageUrl} alt={profile.name} />
+            ) : (
+              <span>{profile.name[0].toUpperCase()}</span>
+            )}
+            {isOwn && <div className="avatar-edit-overlay">{t('profile.edit')}</div>}
+          </div>
         </div>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
         <h2 className="profile-name">{profile.name}</h2>
@@ -108,7 +108,7 @@ export default function ProfilePage() {
         <OverallStats tournaments={profile.playerTournaments} playerId={profile.id} />
       )}
 
-      <Awards seasons={profile.previousSeasons} />
+      <Awards seasons={profile.previousSeasons} badges={profile.badges} />
 
       {profile.previousSeasons.length > 0 && (
         <div className="previous-seasons">
@@ -132,27 +132,39 @@ export default function ProfilePage() {
           ))}
         </div>
       )}
+      {isOwn && showGuide && <GuideModal page="profile" onClose={dismissGuide} />}
     </div>
   );
 }
 
-function Awards({ seasons }: { seasons: SeasonStatisticResult[] }) {
-  const { t } = useTranslation();
-  const medals = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
+function Awards({ seasons, badges }: { seasons: SeasonStatisticResult[]; badges: PlayerBadgeResult[] }) {
+  const { t, i18n } = useTranslation();
+  const medalSvgs = ['/badges/gold-medal.svg', '/badges/silver-medal.svg', '/badges/bronze-medal.svg'];
   const labels = [t('profile.place1'), t('profile.place2'), t('profile.place3')];
   const awards = seasons
     .map((s, i) => ({ seasonNum: seasons.length - i, place: s.superGamePlace }))
     .filter((a) => a.place !== null && a.place !== undefined && a.place >= 1 && a.place <= 3);
 
-  if (awards.length === 0) return null;
+  if (awards.length === 0 && badges.length === 0) return null;
 
   return (
     <div className="stats-card">
       <h3 className="stats-card-title">{t('profile.awards')}</h3>
       <div className="awards-list">
+        {badges.map((b) => (
+          <div key={`badge-${b.id}`} className="award-item">
+            <span className="award-medal">
+              {b.badgeEmoji.startsWith('/') ? <img src={b.badgeEmoji} alt="" className="badge-icon" /> : b.badgeEmoji}
+            </span>
+            <span className="award-text">
+              {i18n.language === 'ru' ? b.badgeNameRu : b.badgeNameEn}
+              {b.note && ` — ${b.note}`}
+            </span>
+          </div>
+        ))}
         {awards.map((a) => (
           <div key={a.seasonNum} className="award-item">
-            <span className="award-medal">{medals[a.place! - 1]}</span>
+            <span className="award-medal"><img src={medalSvgs[a.place! - 1]} alt="" className="badge-icon" /></span>
             <span className="award-text">{t('profile.awardText', { season: a.seasonNum, place: labels[a.place! - 1] })}</span>
           </div>
         ))}

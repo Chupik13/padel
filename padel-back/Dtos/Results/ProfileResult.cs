@@ -8,4 +8,6 @@ public class ProfileResult
     public SeasonStatisticResult? CurrentSeason { get; set; }
     public List<SeasonStatisticResult> PreviousSeasons { get; set; } = [];
     public List<TournamentResult> PlayerTournaments { get; set; } = [];
+    public List<PlayerBadgeResult> Badges { get; set; } = [];
+    public bool IsAdmin { get; set; }
 }

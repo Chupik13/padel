@@ -11,7 +11,12 @@ export default function SlideMenu({ open, onClose }: Props) {
   const { user, miniProfile, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  const setLang = (lang: string) => {
+    i18n.changeLanguage(lang);
+    localStorage.setItem('language', lang);
+  };
 
   const handleNav = (path: string) => {
     navigate(path);
@@ -30,6 +35,10 @@ export default function SlideMenu({ open, onClose }: Props) {
     { label: t('menu.tournaments'), path: '/tournaments' },
     { label: t('menu.seasons'), path: '/seasons' },
     { label: t('menu.club'), path: '/club' },
+    ...(user?.isAdmin ? [
+      { label: t('menu.awards'), path: '/awards' },
+      { label: t('menu.logs'), path: '/logs' },
+    ] : []),
     { label: t('menu.changelog'), path: '/changelog' },
     { label: t('menu.feedback'), path: '/feedback' },
   ];
@@ -40,12 +49,14 @@ export default function SlideMenu({ open, onClose }: Props) {
       <nav className={`slide-menu ${open ? 'open' : ''}`}>
         <div className="slide-menu-header">
           <div className="slide-menu-header-top">
-            <div className="avatar avatar-lg">
-              {user?.imageUrl ? (
-                <img src={user.imageUrl} alt={user.name} />
-              ) : (
-                <span>{(miniProfile?.name ?? user?.name ?? '?')[0].toUpperCase()}</span>
-              )}
+            <div className={`avatar-wrapper${user?.isAdmin ? ' admin' : ''}`}>
+              <div className="avatar avatar-lg">
+                {user?.imageUrl ? (
+                  <img src={user.imageUrl} alt={user.name} />
+                ) : (
+                  <span>{(miniProfile?.name ?? user?.name ?? '?')[0].toUpperCase()}</span>
+                )}
+              </div>
             </div>
             <div className="slide-menu-user-name">{miniProfile?.name ?? user?.name}</div>
           </div>
@@ -77,6 +88,20 @@ export default function SlideMenu({ open, onClose }: Props) {
           <button className="slide-menu-item logout" onClick={handleLogout}>
             {t('menu.logout')}
           </button>
+          <div className="lang-toggle-bar">
+            <button
+              className={`lang-toggle-btn ${i18n.language === 'ru' ? 'active' : ''}`}
+              onClick={() => setLang('ru')}
+            >
+              RU
+            </button>
+            <button
+              className={`lang-toggle-btn ${i18n.language === 'en' ? 'active' : ''}`}
+              onClick={() => setLang('en')}
+            >
+              EN
+            </button>
+          </div>
         </div>
       </nav>
     </>

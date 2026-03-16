@@ -24,6 +24,16 @@ public static class EndpointHelpers
         return playerId;
     }
 
+    public static async Task<bool> IsAdmin(HttpContext httpContext, PadelDbContext db)
+    {
+        var playerIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
+            return false;
+
+        var player = await db.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+        return player?.IsAdmin ?? false;
+    }
+
     public static async Task<List<int>> GetPlayerClubIds(HttpContext httpContext, PadelDbContext db)
     {
         var playerIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);

@@ -9,12 +9,14 @@ public class ClubService(PadelDbContext db)
     public async Task<List<ClubResult>> GetAll()
     {
         return await db.Clubs
+            .Where(c => !c.IsArchived)
             .Select(c => new ClubResult
             {
                 Id = c.Id,
                 Name = c.Name,
                 ImageUrl = c.ImageUrl,
-                MemberCount = c.PlayerClubs.Count
+                MemberCount = c.PlayerClubs.Count,
+                OwnerPlayerId = c.OwnerPlayerId
             })
             .ToListAsync();
     }
@@ -25,14 +27,15 @@ public class ClubService(PadelDbContext db)
         if (player is null) return [];
 
         return await db.PlayerClubs
-            .Where(pc => pc.PlayerId == playerId)
+            .Where(pc => pc.PlayerId == playerId && !pc.Club.IsArchived)
             .Select(pc => new ClubResult
             {
                 Id = pc.Club.Id,
                 Name = pc.Club.Name,
                 ImageUrl = pc.Club.ImageUrl,
                 MemberCount = pc.Club.PlayerClubs.Count,
-                IsPrimary = pc.ClubId == player.ClubId
+                IsPrimary = pc.ClubId == player.ClubId,
+                OwnerPlayerId = pc.Club.OwnerPlayerId
             })
             .ToListAsync();
     }
@@ -42,7 +45,8 @@ public class ClubService(PadelDbContext db)
         var club = new Club
         {
             Name = name,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            OwnerPlayerId = creatorPlayerId
         };
         db.Clubs.Add(club);
         await db.SaveChangesAsync();
@@ -65,7 +69,8 @@ public class ClubService(PadelDbContext db)
             Name = club.Name,
             ImageUrl = club.ImageUrl,
             MemberCount = 1,
-            IsPrimary = true
+            IsPrimary = true,
+            OwnerPlayerId = club.OwnerPlayerId
         };
     }
 
@@ -74,7 +79,7 @@ public class ClubService(PadelDbContext db)
         var player = await db.Players.FirstOrDefaultAsync(p => p.Id == playerId);
         if (player is null) return false;
 
-        var clubExists = await db.Clubs.AnyAsync(c => c.Id == clubId);
+        var clubExists = await db.Clubs.AnyAsync(c => c.Id == clubId && !c.IsArchived);
         if (!clubExists) return false;
 
         var alreadyMember = await db.PlayerClubs.AnyAsync(pc => pc.PlayerId == playerId && pc.ClubId == clubId);
@@ -136,5 +141,44 @@ public class ClubService(PadelDbContext db)
         player.ClubId = clubId;
         await db.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<(bool Success, string? Error)> Archive(int playerId, int clubId, bool isAdmin)
+    {
+        var club = await db.Clubs.FirstOrDefaultAsync(c => c.Id == clubId && !c.IsArchived);
+        if (club is null) return (false, "not_found");
+
+        if (!isAdmin && club.OwnerPlayerId != playerId)
+            return (false, "forbidden");
+
+        var hasUnfinished = await db.Tournaments
+            .AnyAsync(t => t.ClubId == clubId && !t.IsFinished && !t.IsCancelled);
+        if (hasUnfinished) return (false, "has_unfinished");
+
+        club.IsArchived = true;
+
+        // Remove all memberships
+        var memberships = await db.PlayerClubs
+            .Where(pc => pc.ClubId == clubId)
+            .ToListAsync();
+        db.PlayerClubs.RemoveRange(memberships);
+
+        // Reassign primary club for affected players
+        var affectedPlayerIds = memberships.Select(m => m.PlayerId).ToList();
+        var affectedPlayers = await db.Players
+            .Where(p => affectedPlayerIds.Contains(p.Id) && p.ClubId == clubId)
+            .ToListAsync();
+
+        foreach (var player in affectedPlayers)
+        {
+            var nextClub = await db.PlayerClubs
+                .Where(pc => pc.PlayerId == player.Id && pc.ClubId != clubId)
+                .OrderBy(pc => pc.JoinedAt)
+                .FirstOrDefaultAsync();
+            player.ClubId = nextClub?.ClubId;
+        }
+
+        await db.SaveChangesAsync();
+        return (true, null);
     }
 }

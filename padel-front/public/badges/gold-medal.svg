@@ -1,0 +1,19 @@
+<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+  <g id="color">
+    <!-- Ribbon -->
+    <polygon fill="#d22f27" points="24,8 36,30 30,30 18,8"/>
+    <polygon fill="#ea4335" points="48,8 36,30 42,30 54,8"/>
+    <!-- Medal disc -->
+    <circle cx="36" cy="44" r="16" fill="#ffd764"/>
+    <circle cx="36" cy="44" r="12" fill="#ffeb3b"/>
+    <!-- Star -->
+    <polygon fill="#ffd764" points="36,34 38.5,40 45,40.5 40,44.5 41.5,51 36,47.5 30.5,51 32,44.5 27,40.5 33.5,40"/>
+  </g>
+  <g id="line" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+    <polygon points="24,8 36,30 30,30 18,8"/>
+    <polygon points="48,8 36,30 42,30 54,8"/>
+    <circle cx="36" cy="44" r="16"/>
+    <circle cx="36" cy="44" r="12"/>
+    <polygon points="36,34 38.5,40 45,40.5 40,44.5 41.5,51 36,47.5 30.5,51 32,44.5 27,40.5 33.5,40"/>
+  </g>
+</svg>

@@ -32,6 +32,10 @@ export function setPrimaryClub(clubId: number): Promise<void> {
   return apiFetch<void>(`/api/clubs/${clubId}/primary`, { method: 'PUT' });
 }
 
+export function archiveClub(clubId: number): Promise<void> {
+  return apiFetch<void>(`/api/clubs/${clubId}/archive`, { method: 'POST' });
+}
+
 export function uploadClubAvatar(clubId: number, file: File): Promise<void> {
   const formData = new FormData();
   formData.append('file', file);

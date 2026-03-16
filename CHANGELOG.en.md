@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.1.0] — 2026-03-16
+
+### Added
+
+- **Late players** — with 5+ players, a "Someone is running late" checkbox appears on the player selection screen. Marked players automatically rest in the first match.
+  - Player cards with avatars for selecting late players (same style as player selection).
+  - Maximum late players = total players − 4.
+  - Late player list resets on rematch.
+- **Club archiving** — club owner can archive a club via the action menu. Archiving is blocked if the club has unfinished tournaments. Archived clubs are hidden from all lists.
+- **Guide modals** — first-visit onboarding modals on key pages (Play, Profile, Tournaments, Seasons, Clubs) with tips on how the page works. Can be toggled on/off in Settings.
+- **Badges on profile** — player profile now displays awarded badges with icons and descriptions.
+- **Club owner** — the player who created a club is now its owner, with the right to archive it.
+
+### Improved
+
+- **Header** — language toggle replaced with a settings gear icon. Tapping the "Georgiano" logo now navigates to the Play page.
+- **Side menu** — language toggle (RU / EN buttons) moved to the menu footer. Admin users see a laurel wreath around their avatar.
+- **Settings page** — redesigned layout with grouped sections; added "Show guides" toggle.
+- **Profile page** — removed settings button (moved to header). Awards section now shows both season medals and badges.
+- **Season medals** — emoji medals replaced with SVG badge icons (gold, silver, bronze).
+- **Clubs page** — added archive option in the action menu with confirmation dialog.
+
+### Fixed
+
+- **Mobile viewport height** — switched to `100dvh` for correct height on mobile browsers with dynamic toolbars.
+
+---
+
 ## [2.0.0] — 2026-03-15
 
 ### Added

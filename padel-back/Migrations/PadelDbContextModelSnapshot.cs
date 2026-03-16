@@ -22,6 +22,68 @@ namespace padel.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("padel.Models.AuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("PlayerId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerId");
+
+                    b.HasIndex("Timestamp");
+
+                    b.ToTable("AuditLogs");
+                });
+
+            modelBuilder.Entity("padel.Models.BadgeType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Emoji")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NameRu")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("BadgeTypes");
+                });
+
             modelBuilder.Entity("padel.Models.Club", b =>
                 {
                     b.Property<int>("Id")
@@ -36,11 +98,19 @@ namespace padel.Migrations
                     b.Property<string>("ImageUrl")
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("OwnerPlayerId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("OwnerPlayerId");
 
                     b.ToTable("Clubs");
                 });
@@ -114,6 +184,9 @@ namespace padel.Migrations
                     b.Property<string>("ImageUrl")
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsAdmin")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Login")
                         .IsRequired()
                         .HasColumnType("text");
@@ -130,6 +203,35 @@ namespace padel.Migrations
                         .IsUnique();
 
                     b.ToTable("Players");
+                });
+
+            modelBuilder.Entity("padel.Models.PlayerBadge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AwardedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("BadgeTypeId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PlayerId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BadgeTypeId");
+
+                    b.HasIndex("PlayerId", "BadgeTypeId");
+
+                    b.ToTable("PlayerBadges");
                 });
 
             modelBuilder.Entity("padel.Models.PlayerClub", b =>
@@ -331,6 +433,26 @@ namespace padel.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("padel.Models.AuditLog", b =>
+                {
+                    b.HasOne("padel.Models.Player", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("padel.Models.Club", b =>
+                {
+                    b.HasOne("padel.Models.Player", "OwnerPlayer")
+                        .WithMany()
+                        .HasForeignKey("OwnerPlayerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("OwnerPlayer");
+                });
+
             modelBuilder.Entity("padel.Models.Match", b =>
                 {
                     b.HasOne("padel.Models.Tournament", "Tournament")
@@ -361,6 +483,25 @@ namespace padel.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Club");
+                });
+
+            modelBuilder.Entity("padel.Models.PlayerBadge", b =>
+                {
+                    b.HasOne("padel.Models.BadgeType", "BadgeType")
+                        .WithMany("PlayerBadges")
+                        .HasForeignKey("BadgeTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("padel.Models.Player", "Player")
+                        .WithMany("PlayerBadges")
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BadgeType");
+
+                    b.Navigation("Player");
                 });
 
             modelBuilder.Entity("padel.Models.PlayerClub", b =>
@@ -457,6 +598,11 @@ namespace padel.Migrations
                     b.Navigation("Player");
                 });
 
+            modelBuilder.Entity("padel.Models.BadgeType", b =>
+                {
+                    b.Navigation("PlayerBadges");
+                });
+
             modelBuilder.Entity("padel.Models.Club", b =>
                 {
                     b.Navigation("PlayerClubs");
@@ -473,6 +619,8 @@ namespace padel.Migrations
 
             modelBuilder.Entity("padel.Models.Player", b =>
                 {
+                    b.Navigation("PlayerBadges");
+
                     b.Navigation("PlayerClubs");
 
                     b.Navigation("PlayerTeams");
