@@ -16,7 +16,7 @@ public class VideoService(PadelDbContext db, IWebHostEnvironment env, ILogger<Vi
         }
     }
 
-    public async Task<MatchVideo> SaveVideoSegment(Stream stream, int matchId, int cameraSide, int operatorPlayerId, string contentType)
+    public async Task<MatchVideo> SaveVideoSegment(Stream stream, int matchId, int cameraSide, int operatorPlayerId, string contentType, string? orientation = null)
     {
         var ext = contentType switch
         {
@@ -48,6 +48,7 @@ public class VideoService(PadelDbContext db, IWebHostEnvironment env, ILogger<Vi
             existing.OperatorPlayerId = operatorPlayerId;
             existing.MergeStatus = MergeStatus.Pending;
             existing.MergedFilePath = null;
+            existing.Orientation = orientation ?? "landscape";
         }
         else
         {
@@ -60,7 +61,8 @@ public class VideoService(PadelDbContext db, IWebHostEnvironment env, ILogger<Vi
                 ContentType = contentType,
                 FileSize = fileSize,
                 UploadedAt = DateTime.UtcNow,
-                MergeStatus = MergeStatus.Pending
+                MergeStatus = MergeStatus.Pending,
+                Orientation = orientation ?? "landscape"
             };
             db.MatchVideos.Add(existing);
         }
@@ -205,7 +207,17 @@ public class VideoService(PadelDbContext db, IWebHostEnvironment env, ILogger<Vi
         var dur2 = await GetVideoDuration(side2.FilePath);
         logger.LogInformation("Video durations for matchId={MatchId}: side1={D1}s, side2={D2}s", matchId, dur1, dur2);
 
-        const string scale = "scale=640:480:force_original_aspect_ratio=decrease,pad=640:480:(ow-iw)/2:(oh-ih)/2";
+        const int SideW = 640;
+        const int SideH = 360;
+
+        static string BuildSideFilter(string? orientation)
+        {
+            var rotate = (orientation ?? "landscape") == "portrait" ? "transpose=1," : "";
+            return $"{rotate}scale={SideW}:{SideH}:force_original_aspect_ratio=increase,crop={SideW}:{SideH}";
+        }
+
+        var scaleLeft = BuildSideFilter(side1.Orientation);
+        var scaleRight = BuildSideFilter(side2.Orientation);
 
         string filterComplex;
         string audioMap;
@@ -217,7 +229,7 @@ public class VideoService(PadelDbContext db, IWebHostEnvironment env, ILogger<Vi
         if (diff < 0.5 || dur1 <= 0 || dur2 <= 0)
         {
             // Nearly equal or probe failed — simple hstack
-            filterComplex = $"[0:v]{scale}[left];[1:v]{scale}[right];[left][right]hstack=inputs=2[v]";
+            filterComplex = $"[0:v]{scaleLeft}[left];[1:v]{scaleRight}[right];[left][right]hstack=inputs=2[v]";
             audioMap = dur1 >= dur2 ? "0:a?" : "1:a?";
             durationFlag = "";
         }
@@ -233,17 +245,19 @@ public class VideoService(PadelDbContext db, IWebHostEnvironment env, ILogger<Vi
             var leftPts = dur1 < dur2 ? $",setpts=PTS+{offset}/TB" : "";
             var rightPts = dur2 < dur1 ? $",setpts=PTS+{offset}/TB" : "";
 
-            filterComplex = $"color=black:s=1280x480:d={totalDur}:r=30[canvas];" +
-                            $"[0:v]{scale}{leftPts}[left];" +
-                            $"[1:v]{scale}{rightPts}[right];" +
+            filterComplex = $"color=black:s={SideW * 2}x{SideH}:d={totalDur}:r=30[canvas];" +
+                            $"[0:v]{scaleLeft}{leftPts}[left];" +
+                            $"[1:v]{scaleRight}{rightPts}[right];" +
                             $"[canvas][left]overlay=0:0:eof_action=pass[tmp];" +
-                            $"[tmp][right]overlay=640:0:eof_action=pass[v]";
+                            $"[tmp][right]overlay={SideW}:0:eof_action=pass[v]";
         }
 
         var args = $"-y -i \"{side1.FilePath}\" -i \"{side2.FilePath}\" " +
                    $"-filter_complex \"{filterComplex}\" " +
                    $"-map \"[v]\" -map {audioMap} " +
-                   $"-c:v libx264 -c:a aac -preset fast -crf 23 {durationFlag} \"{outputPath}\"";
+                   $"-c:v libx264 -c:a aac -preset ultrafast -crf 28 " +
+                   $"-maxrate 2.5M -bufsize 5M -movflags +faststart " +
+                   $"{durationFlag} \"{outputPath}\"";
 
         logger.LogInformation("FFmpeg merge for matchId={MatchId}: ffmpeg {Args}", matchId, args);
 
@@ -278,6 +292,12 @@ public class VideoService(PadelDbContext db, IWebHostEnvironment env, ILogger<Vi
                 {
                     v.MergeStatus = MergeStatus.Completed;
                     v.MergedFilePath = outputPath;
+                    // Delete source files to save disk space
+                    if (File.Exists(v.FilePath) && v.FilePath != outputPath)
+                    {
+                        File.Delete(v.FilePath);
+                        logger.LogInformation("Deleted source file: {Path}", v.FilePath);
+                    }
                 }
             }
             else

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.3.0] — 2026-03-17
+
+### Added
+
+- **Widescreen video** — merge is now 1280x360 (16:9 per side, was 960x360 / 4:3). More detail, no squished picture.
+- **Camera orientation toggle** — before recording, the operator selects "Landscape" / "Portrait". Portrait video is auto-rotated 90° during merge.
+- **Cross-platform torch** — fallback for Android Chrome torch blinking signal (iOS worked, Android didn't).
+
+### Improved
+
+- Merge bitrate increased to 2.5M/5M for better quality at higher resolution.
+- Backward compatibility: old recordings without orientation are treated as landscape.
+
+---
+
 ## [2.2.0] — 2026-03-16
 
 ### Added

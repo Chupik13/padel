@@ -300,6 +300,7 @@ function formatDuration(ms: number): string {
 }
 
 function MatchRow({ match, hostPlayerId, duration, liveStartedAt, onPlayerClick, videoInfo, onPlayVideo }: { match: MatchResult; hostPlayerId: number | null; duration?: string; liveStartedAt?: string; onPlayerClick: (login: string) => void; videoInfo?: MatchVideoResult; onPlayVideo?: (url: string) => void }) {
+  const { t } = useTranslation();
   const [liveElapsed, setLiveElapsed] = useState('');
 
   const updateElapsed = useCallback(() => {
@@ -343,14 +344,20 @@ function MatchRow({ match, hostPlayerId, duration, liveStartedAt, onPlayerClick,
       <div className="tournament-match-score">
         {match.teamOneScore} : {match.teamTwoScore}
         {displayDuration && <span className="match-duration">{displayDuration}</span>}
-        {videoInfo?.videoUrl && onPlayVideo && (
+        {videoInfo?.videoUrl && onPlayVideo && videoInfo.mergeStatus === 'Completed' && (
           <button
             className="video-play-btn"
             onClick={(e) => { e.stopPropagation(); onPlayVideo(videoInfo.videoUrl!); }}
-            title={videoInfo.mergeStatus === 'Processing' ? 'Processing...' : 'Play video'}
+            title={t('video.watch')}
           >
-            {videoInfo.mergeStatus === 'Processing' ? '⏳' : '▶'}
+            ▶
           </button>
+        )}
+        {videoInfo?.videoUrl && videoInfo.mergeStatus === 'Processing' && (
+          <span className="video-status-icon video-status-processing" title={t('video.merging')}>⏳</span>
+        )}
+        {videoInfo?.videoUrl && videoInfo.mergeStatus === 'Pending' && (
+          <span className="video-status-icon video-status-pending" title={t('video.uploading')}>⬆</span>
         )}
       </div>
       <div className="tournament-match-team tournament-match-team-right">

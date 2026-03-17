@@ -15,25 +15,45 @@ public static class VideoEndpoints
     {
         var group = app.MapGroup("/api/videos").RequireAuthorization();
 
-        group.MapPost("/{matchId}/upload", async (int matchId, int cameraSide, IFormFile file,
-            VideoService videoService, HttpContext httpContext, PadelDbContext db) =>
+        group.MapPost("/{matchId}/upload", async (int matchId, int cameraSide, string? orientation, IFormFile? file,
+            VideoService videoService, HttpContext httpContext, PadelDbContext db, ILogger<VideoService> logger) =>
         {
             var playerIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (playerIdStr is null || !int.TryParse(playerIdStr, out var playerId))
+            {
+                logger.LogWarning("Video upload 401: no playerId claim, matchId={MatchId}", matchId);
                 return Results.Unauthorized();
+            }
+
+            if (file is null || file.Length == 0)
+            {
+                logger.LogWarning("Video upload 400: no file or empty, matchId={MatchId}, playerId={PlayerId}, cameraSide={Side}, contentType={CT}",
+                    matchId, playerId, cameraSide, httpContext.Request.ContentType);
+                return Results.BadRequest(new { error = "No file uploaded or file is empty" });
+            }
 
             var match = await db.Matches.FirstOrDefaultAsync(m => m.Id == matchId);
             if (match is null)
+            {
+                logger.LogWarning("Video upload 404: match not found, matchId={MatchId}, playerId={PlayerId}", matchId, playerId);
                 return Results.NotFound();
+            }
 
             // Verify player is an operator for this tournament
             var isOperator = await db.TournamentOperators
                 .AnyAsync(o => o.TournamentId == match.TournamentId && o.PlayerId == playerId && o.CameraSide == cameraSide && o.IsActive);
             if (!isOperator)
+            {
+                logger.LogWarning("Video upload 403: not an active operator, matchId={MatchId}, playerId={PlayerId}, cameraSide={Side}, tournamentId={TId}",
+                    matchId, playerId, cameraSide, match.TournamentId);
                 return Results.Forbid();
+            }
+
+            logger.LogInformation("Video upload starting: matchId={MatchId}, playerId={PlayerId}, cameraSide={Side}, fileSize={Size}, contentType={CT}",
+                matchId, playerId, cameraSide, file.Length, file.ContentType);
 
             await using var stream = file.OpenReadStream();
-            var result = await videoService.SaveVideoSegment(stream, matchId, cameraSide, playerId, file.ContentType);
+            var result = await videoService.SaveVideoSegment(stream, matchId, cameraSide, playerId, file.ContentType, orientation);
 
             return Results.Ok(new { result.Id, result.MatchId, result.CameraSide, result.FileSize });
         }).DisableAntiforgery();

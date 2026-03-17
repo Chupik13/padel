@@ -404,7 +404,17 @@
     "useVideoMode": "Video recording tools",
     "waitingForOperators": "Waiting for operators...",
     "operatorsRecording": "Operators recording: {{count}}/2",
-    "startGame": "Start Game"
+    "startGame": "Start Game",
+    "uploadingTitle": "Uploading videos",
+    "uploadingHint": "Don't minimize or close the browser",
+    "uploadingMatch": "Match {{num}}",
+    "uploadPending": "Pending",
+    "uploadComplete": "All videos uploaded!",
+    "uploadingCount": "{{done}} of {{total}}",
+    "countdown": "Get ready",
+    "waitIndicator": "WAIT",
+    "landscape": "Landscape",
+    "portrait": "Portrait"
   },
   "table": {
     "name": "Name",

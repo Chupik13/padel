@@ -406,7 +406,17 @@
     "useVideoMode": "Инструменты видеозаписи",
     "waitingForOperators": "Ожидание операторов...",
     "operatorsRecording": "Записывают: {{count}}/2",
-    "startGame": "Начать игру"
+    "startGame": "Начать игру",
+    "uploadingTitle": "Загрузка видео",
+    "uploadingHint": "Не сворачивайте и не закрывайте браузер",
+    "uploadingMatch": "Матч {{num}}",
+    "uploadPending": "Ожидает",
+    "uploadComplete": "Все видео загружены!",
+    "uploadingCount": "{{done}} из {{total}}",
+    "countdown": "Приготовьтесь",
+    "waitIndicator": "ЖДИТЕ",
+    "landscape": "Горизонтально",
+    "portrait": "Вертикально"
   },
   "table": {
     "name": "Имя",

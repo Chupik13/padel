@@ -9,6 +9,9 @@ public class VideoMergeBackgroundService(IServiceProvider serviceProvider, ILogg
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Reset stuck Processing status on startup
+        await ResetStuckMerges();
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -21,6 +24,22 @@ public class VideoMergeBackgroundService(IServiceProvider serviceProvider, ILogg
             }
 
             await Task.Delay(CheckInterval, stoppingToken);
+        }
+    }
+
+    private async Task ResetStuckMerges()
+    {
+        using var scope = serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<PadelDbContext>();
+        var stuck = await db.MatchVideos
+            .Where(v => v.MergeStatus == MergeStatus.Processing)
+            .ToListAsync();
+        if (stuck.Count > 0)
+        {
+            logger.LogWarning("Resetting {Count} stuck Processing merges to Pending", stuck.Count);
+            foreach (var v in stuck)
+                v.MergeStatus = MergeStatus.Pending;
+            await db.SaveChangesAsync();
         }
     }
 

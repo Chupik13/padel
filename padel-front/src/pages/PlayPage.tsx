@@ -124,6 +124,7 @@ export default function PlayPage() {
       });
     },
     onMatchNavigated: (_tournamentId, matchIndex) => {
+      console.log('[SignalR] MatchNavigated', matchIndex);
       setTournament((prev) => {
         if (!prev) return prev;
         const matches = [...prev.matches];
@@ -134,6 +135,7 @@ export default function PlayPage() {
       });
     },
     onTournamentFinished: () => {
+      console.log('[SignalR] TournamentFinished');
       setTournament((prev) => {
         if (!prev) return prev;
         return {
@@ -146,16 +148,22 @@ export default function PlayPage() {
           ),
         };
       });
-      setScreen('results');
+      // StopRecording(-1) уже вызван до TournamentFinished, но подстрахуемся
+      const stop = (window as unknown as Record<string, unknown>).__operatorStop;
+      if (typeof stop === 'function') (stop as () => void)();
+      // Operators stay on operator screen to show upload progress
+      setScreen((prev) => prev === 'operator' ? prev : 'results');
     },
     onTournamentCancelled: () => {
       handleRestart();
     },
     onStartRecording: (matchIndex: number) => {
+      console.log('[SignalR] StartRecording', matchIndex);
       const start = (window as unknown as Record<string, unknown>).__operatorStartSegment;
       if (typeof start === 'function') (start as (i: number) => void)(matchIndex);
     },
     onStopRecording: (matchIndex: number) => {
+      console.log('[SignalR] StopRecording', matchIndex);
       if (matchIndex === -1) {
         const stop = (window as unknown as Record<string, unknown>).__operatorStop;
         if (typeof stop === 'function') (stop as () => void)();
@@ -170,6 +178,7 @@ export default function PlayPage() {
       }
     },
     onGameStarted: () => {
+      console.log('[SignalR] GameStarted');
       setIsGameStarted(true);
       setTournament((prev) => {
         if (!prev) return prev;
@@ -297,7 +306,7 @@ export default function PlayPage() {
 
   const handleExitOperator = () => {
     setOperatorSide(0);
-    setScreen('match');
+    setScreen(tournament?.isFinished ? 'results' : 'match');
   };
 
   const handleResume = () => {
@@ -764,7 +773,7 @@ export default function PlayPage() {
             onFinish={handleFinish}
             onCancel={isHost ? handleCancel : undefined}
             onEarlyFinish={isHost && !inSeason ? handleEarlyFinish : undefined}
-            onBecomeOperator={!!tournament.id && !isHost && !tournament.isFinished && hasVideoMode ? () => {
+            onBecomeOperator={!!tournament.id && (!isHost || isAdmin) && !tournament.isFinished && hasVideoMode ? () => {
               getOperators(tournament.id!).then((ops) => {
                 setOperators(ops);
                 setShowOperatorChoice(true);

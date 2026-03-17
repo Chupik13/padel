@@ -14,6 +14,7 @@ public class MatchVideo
     public DateTime UploadedAt { get; set; }
     public string? MergedFilePath { get; set; }
     public MergeStatus MergeStatus { get; set; } = MergeStatus.Pending;
+    public string? Orientation { get; set; } // "landscape" / "portrait"
 }
 
 public enum MergeStatus

@@ -251,7 +251,7 @@ function useSwipe(onSwipeLeft: () => void, onSwipeRight: () => void) {
   return { onTouchStart, onTouchEnd };
 }
 
-export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, onFinish, onCancel, onEarlyFinish, onBecomeOperator, readOnly = false, hostName, earlyFinishError, hideControls = false }: Props) {
+export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, onFinish, onCancel, onEarlyFinish, onBecomeOperator, readOnly = false, earlyFinishError, hideControls = false }: Props) {
   const { players, matches, currentMatchIndex } = tournament;
   const safeIndex = matches.length > 0 ? Math.min(currentMatchIndex, matches.length - 1) : 0;
   const match = matches.length > 0 ? matches[safeIndex] : undefined;
@@ -262,6 +262,7 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
   const [score1, setScore1] = useState(match?.score1?.toString() ?? '');
   const [score2, setScore2] = useState(match?.score2?.toString() ?? '');
   const [finishModal, setFinishModal] = useState<'menu' | 'earlyFinish' | 'cancel' | null>(null);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [matchElapsed, setMatchElapsed] = useState('');
   const [tournamentElapsed, setTournamentElapsed] = useState('');
   const [activeTab, setActiveTab] = useState<'match' | 'stats'>('match');
@@ -344,7 +345,7 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
     <div className="screen" {...swipe}>
       {readOnly && (
         <div className="spectator-badge">
-          {t('match.spectator')}{hostName && <span className="host-badge"> &middot; {t('match.host', { name: hostName })}</span>}
+          {t('match.spectator')}
         </div>
       )}
       {finishModal === 'menu' && (
@@ -403,7 +404,27 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
         <div className="match-content">
           <div className="match-progress-row">
             <div className="match-counter">{t('match.counter', { current: safeIndex + 1, total: matches.length })}</div>
-            {!readOnly && (onEarlyFinish || onCancel) && (
+            {!readOnly && (onEarlyFinish || onCancel) && onBecomeOperator && (
+              <div className="match-options-wrapper">
+                <button className="match-finish-btn" onClick={() => setShowOptionsMenu(v => !v)}>
+                  ⋮
+                </button>
+                {showOptionsMenu && (
+                  <>
+                    <div className="club-menu-backdrop" onClick={() => setShowOptionsMenu(false)} />
+                    <div className="match-options-dropdown">
+                      <button className="club-menu-dropdown-item" onClick={() => { setShowOptionsMenu(false); onBecomeOperator(); }}>
+                        {t('video.joinAsOperator')}
+                      </button>
+                      <button className="club-menu-dropdown-item danger" onClick={() => { setShowOptionsMenu(false); setFinishModal('menu'); }}>
+                        {t('match.finishBtn')}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            {!readOnly && (onEarlyFinish || onCancel) && !onBecomeOperator && (
               <button className="match-finish-btn" onClick={() => setFinishModal('menu')}>
                 {t('match.finishBtn')}
               </button>

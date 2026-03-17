@@ -49,6 +49,10 @@ builder.Services.AddSignalR();
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.Limits.MaxRequestBodySize = 500 * 1024 * 1024; // 500 MB
+    options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(10);
+    options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(2);
+    // Disable minimum data rate to prevent Kestrel from killing slow mobile uploads
+    options.Limits.MinRequestBodyDataRate = null;
 });
 
 var app = builder.Build();

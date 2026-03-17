@@ -111,7 +111,6 @@ public static class TournamentEndpoints
 
             await hub.Clients.Group($"tournament-{id}").SendAsync("ScoreUpdated",
                 id, request.MatchIndex, request.TeamOneScore, request.TeamTwoScore);
-            await hub.Clients.Group($"tournament-{id}").SendAsync("StopRecording", request.MatchIndex);
 
             return Results.Ok(result);
         });
@@ -213,7 +212,6 @@ public static class TournamentEndpoints
             await db.SaveChangesAsync();
 
             await hub.Clients.Group($"tournament-{id}").SendAsync("GameStarted", id);
-            await hub.Clients.Group($"tournament-{id}").SendAsync("StartRecording", 0);
 
             await auditLogService.Log(playerId, "start_game", $"tournamentId={id}");
 
