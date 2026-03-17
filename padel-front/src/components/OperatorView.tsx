@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVideoRecorder } from '../hooks/useVideoRecorder';
 import type { UploadStatus } from '../hooks/useVideoRecorder';
+import { notifyRecordingStarted } from '../api/videos';
 
 interface OperatorViewProps {
   tournamentId: number;
@@ -9,44 +10,73 @@ interface OperatorViewProps {
   matchIds: number[];
   currentMatchIndex: number;
   totalMatches: number;
+  isFinished?: boolean;
   onExit: () => void;
 }
 
 export default function OperatorView({
+  tournamentId,
   cameraSide,
   matchIds,
   currentMatchIndex,
   totalMatches,
+  isFinished,
   onExit,
 }: OperatorViewProps) {
   const { t } = useTranslation();
   const videoElRef = useRef<HTMLVideoElement>(null);
   const [started, setStarted] = useState(false);
-  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
+  const [starting, setStarting] = useState(false);
+  const [sessionEnded, setSessionEnded] = useState(false);
   const {
     isRecording,
     uploadProgress,
     error,
     countdown,
     startRecording,
-    stopSegment,
-    startSegment,
     stopRecording,
     discardSegment,
     setMatchIds,
     startSegmentDelayed,
     cancelDelay,
-  } = useVideoRecorder(cameraSide, orientation);
+  } = useVideoRecorder(cameraSide, 'landscape');
 
   useEffect(() => {
     setMatchIds(matchIds);
   }, [matchIds, setMatchIds]);
 
-  const handleStart = async () => {
-    if (videoElRef.current) {
-      await startRecording(videoElRef.current, currentMatchIndex);
-      setStarted(true);
+  // Lock to landscape on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        await document.documentElement.requestFullscreen();
+        await (screen.orientation as unknown as { lock: (o: string) => Promise<void> }).lock('landscape');
+      } catch (e) {
+        console.log('Fullscreen/lock failed (non-critical):', e);
+      }
+    })();
+  }, []);
+
+  // Watch for tournament finish — stop recording once
+  const finishHandledRef = useRef(false);
+  useEffect(() => {
+    if (isFinished && started && !finishHandledRef.current) {
+      finishHandledRef.current = true;
+      cancelDelay();
+      stopRecording(10).then(() => {
+        try { screen.orientation?.unlock?.(); } catch {}
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+        setSessionEnded(true);
+      });
     }
+  }, [isFinished, started, cancelDelay, stopRecording]);
+
+  const handleStart = async () => {
+    if (starting || !videoElRef.current) return;
+    setStarting(true);
+    await startRecording(videoElRef.current, currentMatchIndex);
+    setStarted(true);
+    notifyRecordingStarted(tournamentId).catch(() => {});
   };
 
   const handleExit = async () => {
@@ -54,18 +84,26 @@ export default function OperatorView({
       cancelDelay();
       await stopRecording(10);
     }
+    try { screen.orientation?.unlock?.(); } catch {}
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    setSessionEnded(true);
     onExit();
   };
 
-  // Expose stopSegment/startSegment/stopRecording/discardSegment for SignalR via window
+  // Expose segment control for SignalR via window
   useEffect(() => {
-    (window as unknown as Record<string, unknown>).__operatorStopSegment = stopSegment;
+    // StopSegment is a no-op: startSegmentDelayed handles stop+trim of previous segment.
+    // This prevents double-stop when StopRecording and StartRecording arrive together.
+    (window as unknown as Record<string, unknown>).__operatorStopSegment = () => {
+      // no-op — handled by startSegmentDelayed
+    };
     (window as unknown as Record<string, unknown>).__operatorStartSegment = (matchIndex: number) => {
       startSegmentDelayed(matchIndex, 20, 10);
     };
     (window as unknown as Record<string, unknown>).__operatorStop = async () => {
       cancelDelay();
       await stopRecording(10);
+      setSessionEnded(true);
     };
     (window as unknown as Record<string, unknown>).__operatorGameStarted = async () => {
       await discardSegment();
@@ -77,7 +115,7 @@ export default function OperatorView({
       delete (window as unknown as Record<string, unknown>).__operatorStop;
       delete (window as unknown as Record<string, unknown>).__operatorGameStarted;
     };
-  }, [stopSegment, startSegment, stopRecording, discardSegment, startSegmentDelayed, cancelDelay]);
+  }, [stopRecording, discardSegment, startSegmentDelayed, cancelDelay]);
 
   // Upload overlay state
   const uploads = Array.from(uploadProgress.entries());
@@ -85,7 +123,7 @@ export default function OperatorView({
   const doneCount = uploads.filter(([, s]) => s === 'done').length;
   const errorCount = uploads.filter(([, s]) => s === 'error').length;
   const allFinished = hasUploads && doneCount + errorCount === uploads.length;
-  const showUploadOverlay = started && !isRecording && countdown === null && hasUploads;
+  const showUploadOverlay = sessionEnded && hasUploads;
 
   // Auto-exit when all uploads complete
   useEffect(() => {
@@ -209,7 +247,7 @@ export default function OperatorView({
       <div className="operator-overlay">
         <div className="operator-top">
           {isRecording && <span className="rec-indicator">REC</span>}
-          {countdown !== null && <span className="wait-indicator">{t('video.waitIndicator')}</span>}
+          {!isRecording && countdown !== null && <span className="wait-indicator">{t('video.waitIndicator')}</span>}
           <span className="operator-match-counter">
             {t('match.counter', { current: currentMatchIndex + 1, total: totalMatches })}
           </span>
@@ -237,25 +275,13 @@ export default function OperatorView({
         )}
 
         <div className="operator-bottom">
-          {!started && (
-            <div className="orientation-toggle">
-              <button
-                className={`orientation-btn ${orientation === 'landscape' ? 'active' : ''}`}
-                onClick={() => setOrientation('landscape')}
-              >
-                {t('video.landscape')}
-              </button>
-              <button
-                className={`orientation-btn ${orientation === 'portrait' ? 'active' : ''}`}
-                onClick={() => setOrientation('portrait')}
-              >
-                {t('video.portrait')}
-              </button>
-            </div>
-          )}
           {!started ? (
-            <button className="btn btn-primary" onClick={handleStart}>
-              {t('video.operatorMode')}
+            <button className="btn btn-primary" onClick={handleStart} disabled={starting}>
+              {starting ? (
+                <><div className="btn-spinner" /> {t('video.cameraLoading')}</>
+              ) : (
+                t('video.operatorMode')
+              )}
             </button>
           ) : (
             <button className="btn btn-secondary" onClick={handleExit}>

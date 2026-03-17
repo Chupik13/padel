@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { uploadVideoSegment } from '../api/videos';
 
 export type UploadStatus = 'pending' | 'uploading' | 'done' | 'error';
@@ -20,7 +20,7 @@ function getSupportedMimeType(): string {
   return 'video/webm';
 }
 
-export function useVideoRecorder(cameraSide: number, orientation = 'landscape') {
+export function useVideoRecorder(cameraSide: number, orientation: string = 'landscape') {
   const [isRecording, setIsRecording] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Map<number, UploadStatus>>(new Map());
   const [error, setError] = useState<string | null>(null);
@@ -34,8 +34,18 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
   const mimeTypeRef = useRef<string>('');
   const pendingStopRef = useRef<Promise<void> | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const startingRef = useRef(false);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const orientationRef = useRef(orientation);
+  // Guard: prevent duplicate startSegmentDelayed for the same match
+  const segmentDelayMatchRef = useRef(-1);
+  // Guard: prevent duplicate stopRecording calls
+  const stoppedRef = useRef(false);
+
+  useEffect(() => {
+    orientationRef.current = orientation;
+  }, [orientation]);
 
   const setMatchIds = useCallback((ids: number[]) => {
     matchIdsRef.current = ids;
@@ -60,7 +70,9 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
           await new Promise((r) => setTimeout(r, delay));
         }
         const contentType = mimeTypeRef.current.split(';')[0];
-        await uploadVideoSegment(matchId, cameraSide, blob, contentType, orientation);
+        const ori = orientationRef.current;
+        log('uploadBlob orientation:', ori);
+        await uploadVideoSegment(matchId, cameraSide, blob, contentType, ori);
         log('uploadBlob SUCCESS', { matchIndex, matchId, attempt });
         setUploadProgress((prev) => new Map(prev).set(matchIndex, 'done'));
         return;
@@ -71,7 +83,7 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
         }
       }
     }
-  }, [cameraSide, orientation]);
+  }, [cameraSide]);
 
   const releaseStream = useCallback(() => {
     log('releaseStream');
@@ -82,6 +94,11 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
   const createRecorder = useCallback(() => {
     if (!streamRef.current || !streamRef.current.active) {
       log('createRecorder SKIP — stream not active', { hasStream: !!streamRef.current, active: streamRef.current?.active });
+      return;
+    }
+    // Prevent creating a second recorder if one is already active
+    if (recorderRef.current && recorderRef.current.state === 'recording') {
+      log('createRecorder SKIP — recorder already active');
       return;
     }
     log('createRecorder — match', currentMatchRef.current);
@@ -111,31 +128,94 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
   }, []);
 
   const startRecording = useCallback(async (videoElement: HTMLVideoElement, initialMatchIndex = 0) => {
-    log('startRecording', { initialMatchIndex });
+    log('startRecording', { initialMatchIndex, alreadyStarting: startingRef.current });
+    if (startingRef.current) {
+      log('startRecording SKIP — already starting');
+      return;
+    }
+    startingRef.current = true;
+    stoppedRef.current = false;
     try {
+      // Step 1: Find the best camera deviceId (prefer one with torch)
+      let bestDeviceId: string | undefined;
+      try {
+        const probe = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: 'environment' } },
+          audio: false,
+        }).catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: false }));
+
+        const probeTrack = probe.getVideoTracks()[0];
+        const probeCaps = probeTrack?.getCapabilities?.() as Record<string, unknown> | undefined;
+        const probeDeviceId = probeTrack?.getSettings?.().deviceId;
+        log('probe camera:', probeTrack?.label, '| torch:', probeCaps?.torch, '| deviceId:', probeDeviceId?.slice(0, 8));
+
+        if (probeCaps?.torch) {
+          bestDeviceId = probeDeviceId;
+          log('probe camera has torch, using it');
+        } else {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const otherCams = devices.filter(d => d.kind === 'videoinput' && d.deviceId !== probeDeviceId);
+          log('scanning', otherCams.length, 'other cameras for torch...');
+          probeTrack?.stop();
+
+          for (const cam of otherCams) {
+            try {
+              const testStream = await navigator.mediaDevices.getUserMedia({
+                video: { deviceId: { exact: cam.deviceId } },
+                audio: false,
+              });
+              const testTrack = testStream.getVideoTracks()[0];
+              const testCaps = testTrack?.getCapabilities?.() as Record<string, unknown> | undefined;
+              log('test camera:', testTrack?.label, '| torch:', testCaps?.torch);
+              testTrack?.stop();
+
+              if (testCaps?.torch) {
+                bestDeviceId = cam.deviceId;
+                log('FOUND torch camera:', testTrack?.label);
+                break;
+              }
+            } catch (e) {
+              log('skip camera', cam.label, e);
+            }
+          }
+
+          if (!bestDeviceId) {
+            bestDeviceId = probeDeviceId;
+            log('no torch camera found, using original');
+          }
+        }
+
+        probe.getTracks().forEach(t => t.stop());
+      } catch (e) {
+        log('camera probe error, will use default', e);
+      }
+
+      // Step 2: Create a SINGLE clean stream with the chosen camera + audio
       let stream: MediaStream;
+      const videoConstraints = bestDeviceId
+        ? { deviceId: { exact: bestDeviceId } }
+        : { facingMode: { ideal: 'environment' } };
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
+          video: videoConstraints,
           audio: true,
         });
       } catch {
-        // Fallback: any camera
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       }
 
       streamRef.current = stream;
       videoElement.srcObject = stream;
 
-      // Detect stream interruption (phone call, OS camera revoke)
+      const finalTrack = stream.getVideoTracks()[0];
+      const finalCaps = finalTrack?.getCapabilities?.() as Record<string, unknown> | undefined;
+      log('final camera:', finalTrack?.label, '| torch:', finalCaps?.torch);
+
+      // Detect stream interruption
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.onended = () => {
           log('videoTrack ended — stream interrupted');
-          // Release camera so reconnection can acquire it
           releaseStream();
           recorderRef.current = null;
           setIsRecording(false);
@@ -146,7 +226,6 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
 
       await acquireWakeLock();
 
-      // Re-acquire wake lock when page becomes visible again
       const onVisibilityChange = () => {
         if (document.visibilityState === 'visible' && streamRef.current?.active) {
           acquireWakeLock();
@@ -166,6 +245,8 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
     } catch (e) {
       log('startRecording FAIL', e);
       setError('cameraAccessDenied');
+    } finally {
+      startingRef.current = false;
     }
   }, [createRecorder, acquireWakeLock, releaseWakeLock, releaseStream]);
 
@@ -184,7 +265,6 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
 
       recorder.onstop = () => {
         const capturedChunks = chunksRef.current;
-        // Trim last N seconds (each chunk ≈ 1 second from timeslice)
         const trimmed = trimSeconds > 0 && capturedChunks.length > trimSeconds
           ? capturedChunks.slice(0, -trimSeconds)
           : capturedChunks;
@@ -226,38 +306,43 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
   }, []);
 
   // Blink torch (flashlight) twice as a signal.
-  // Try multiple methods: iOS uses advanced constraints, Android needs direct constraints.
   const blinkTorch = useCallback(async () => {
     try {
       const videoTrack = streamRef.current?.getVideoTracks()[0];
-      if (!videoTrack) return;
+      if (!videoTrack) {
+        log('blinkTorch: no video track');
+        return;
+      }
 
-      // Detect which torch method works
-      const setTorch = async (on: boolean) => {
-        try {
-          // Method 1: advanced constraints (iOS Safari)
-          await videoTrack.applyConstraints({ advanced: [{ torch: on } as MediaTrackConstraintSet] });
-        } catch {
-          // Method 2: direct constraint (Android Chrome)
-          await videoTrack.applyConstraints({ torch: on } as unknown as MediaTrackConstraints);
-        }
-      };
+      const caps = videoTrack.getCapabilities?.() as Record<string, unknown> | undefined;
+      log('blinkTorch: torch capability =', caps?.torch, '| label =', videoTrack.label);
 
-      const blink = async () => {
-        await setTorch(true);
-        await new Promise((r) => setTimeout(r, 200));
-        await setTorch(false);
-      };
+      if (caps?.torch === false) {
+        log('blinkTorch SKIP — torch explicitly false');
+        return;
+      }
 
-      await blink();
+      log('blinkTorch: applying torch=true (advanced)...');
+      await videoTrack.applyConstraints({ advanced: [{ torch: true } as MediaTrackConstraintSet] });
+
+      const afterSettings = videoTrack.getSettings?.() as Record<string, unknown> | undefined;
+      log('blinkTorch: after ON — settings.torch =', afterSettings?.torch);
+
       await new Promise((r) => setTimeout(r, 200));
-      await blink();
+      await videoTrack.applyConstraints({ advanced: [{ torch: false } as MediaTrackConstraintSet] });
+      await new Promise((r) => setTimeout(r, 200));
+
+      await videoTrack.applyConstraints({ advanced: [{ torch: true } as MediaTrackConstraintSet] });
+      await new Promise((r) => setTimeout(r, 200));
+      await videoTrack.applyConstraints({ advanced: [{ torch: false } as MediaTrackConstraintSet] });
+
+      log('blinkTorch: done OK');
     } catch (e) {
-      log('blinkTorch error (non-critical)', e);
+      log('blinkTorch error (non-critical):', (e as Error)?.name, (e as Error)?.message);
     }
   }, []);
 
-  // Cancel pending countdown
+  // Cancel pending countdown — clears tracked interval/timeout refs
   const cancelDelay = useCallback(() => {
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
@@ -267,12 +352,30 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
       clearTimeout(countdownTimeoutRef.current);
       countdownTimeoutRef.current = null;
     }
+    segmentDelayMatchRef.current = -1;
     setCountdown(null);
   }, []);
 
   // Start a new segment after a delay, with optional trimming of previous segment
   const startSegmentDelayed = useCallback(async (matchIndex: number, delaySec: number, trimPrevSec: number) => {
     log('startSegmentDelayed', { matchIndex, delaySec, trimPrevSec });
+
+    // Guard: prevent duplicate call for the same match
+    if (segmentDelayMatchRef.current === matchIndex) {
+      log('startSegmentDelayed SKIP — duplicate for match', matchIndex);
+      return;
+    }
+    segmentDelayMatchRef.current = matchIndex;
+
+    // Cancel any existing countdown
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    if (countdownTimeoutRef.current) {
+      clearTimeout(countdownTimeoutRef.current);
+      countdownTimeoutRef.current = null;
+    }
 
     // Stop previous segment with trimming if there's an active recorder
     if (recorderRef.current && recorderRef.current.state === 'recording') {
@@ -289,27 +392,34 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
     let remaining = delaySec;
     setCountdown(remaining);
 
-    countdownIntervalRef.current = setInterval(() => {
+    // Capture interval ID in closure for reliable self-clearing
+    const intervalId = setInterval(() => {
       remaining -= 1;
       if (remaining <= 0) {
         setCountdown(0);
-        if (countdownIntervalRef.current) {
-          clearInterval(countdownIntervalRef.current);
+        clearInterval(intervalId);
+        if (countdownIntervalRef.current === intervalId) {
           countdownIntervalRef.current = null;
         }
       } else {
         setCountdown(remaining);
       }
     }, 1000);
+    countdownIntervalRef.current = intervalId;
 
-    // When countdown finishes — blink and start recording
-    countdownTimeoutRef.current = setTimeout(async () => {
-      countdownTimeoutRef.current = null;
+    // When countdown finishes — blink, wait 1 sec, then start recording
+    const timeoutId = setTimeout(async () => {
+      if (countdownTimeoutRef.current === timeoutId) {
+        countdownTimeoutRef.current = null;
+      }
+      setCountdown(null);
       await blinkTorch();
+      // 1-second delay after blink to trim flash artifact
+      await new Promise((r) => setTimeout(r, 1000));
       createRecorder();
       setIsRecording(true);
-      setCountdown(null);
     }, delaySec * 1000);
+    countdownTimeoutRef.current = timeoutId;
   }, [stopSegment, blinkTorch, createRecorder]);
 
   // Start a new recording segment for a given match index.
@@ -318,7 +428,6 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
     if (pendingStopRef.current) {
       await pendingStopRef.current;
     }
-    // Safety: stop active recorder that wasn't stopped via stopSegment
     if (recorderRef.current && recorderRef.current.state === 'recording') {
       log('startSegment — force stopping active recorder');
       await stopSegment();
@@ -329,6 +438,12 @@ export function useVideoRecorder(cameraSide: number, orientation = 'landscape') 
 
   // Final stop: upload last segment + release camera.
   const stopRecording = useCallback(async (trimSeconds = 0) => {
+    // Guard: only stop once
+    if (stoppedRef.current) {
+      log('stopRecording SKIP — already stopped');
+      return;
+    }
+    stoppedRef.current = true;
     log('stopRecording (final)', { trimSeconds });
     cancelDelay();
     await stopSegment(trimSeconds);

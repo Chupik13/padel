@@ -9,6 +9,7 @@ interface TournamentHubCallbacks {
   onStartRecording?: (matchIndex: number) => void;
   onStopRecording?: (matchIndex: number) => void;
   onOperatorJoined?: (playerId: number, cameraSide: number) => void;
+  onOperatorRecordingStarted?: (playerId: number, cameraSide: number) => void;
   onGameStarted?: (tournamentId: number) => void;
 }
 
@@ -55,6 +56,10 @@ export function useTournamentHub(callbacks: TournamentHubCallbacks) {
 
     connection.on('OperatorJoined', (playerId: number, cameraSide: number) => {
       callbacksRef.current.onOperatorJoined?.(playerId, cameraSide);
+    });
+
+    connection.on('OperatorRecordingStarted', (playerId: number, cameraSide: number) => {
+      callbacksRef.current.onOperatorRecordingStarted?.(playerId, cameraSide);
     });
 
     connection.on('GameStarted', (tournamentId: number) => {

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { UserResult, ProfileMiniResult } from '../types/api';
 import * as authApi from '../api/auth';
 import { getMiniProfile } from '../api/profile';
+import { ApiError } from '../api/client';
 
 interface AuthContextType {
   user: UserResult | null;
@@ -33,15 +34,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    Promise.all([authApi.getMe(), getMiniProfile()])
-      .then(([me, profile]) => {
-        setUser(me);
-        setMiniProfile(profile);
-      })
-      .catch(() => {
-        setUser(null);
-      })
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    const tryLoad = async (retries = 3) => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const [me, profile] = await Promise.all([authApi.getMe(), getMiniProfile()]);
+          if (!cancelled) {
+            setUser(me);
+            setMiniProfile(profile);
+          }
+          return;
+        } catch (e: unknown) {
+          const isServerError = e instanceof ApiError && e.status >= 500;
+          const isNetworkError = !(e instanceof ApiError);
+          if ((isServerError || isNetworkError) && i < retries - 1) {
+            await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+            continue;
+          }
+          if (!cancelled) setUser(null);
+          return;
+        }
+      }
+    };
+    tryLoad().finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   const login = async (loginStr: string, password: string) => {

@@ -97,6 +97,7 @@ export default function PlayPage() {
   const [operators, setOperators] = useState<OperatorResult[]>([]);
   const [showOperatorChoice, setShowOperatorChoice] = useState(false);
   const [serverMatchIds, setServerMatchIds] = useState<number[]>([]);
+  const [recordingSides, setRecordingSides] = useState<Set<number>>(new Set());
 
   // Video mode
   const [hasVideoMode, setHasVideoMode] = useState(false);
@@ -176,6 +177,9 @@ export default function PlayPage() {
       if (tournament?.id) {
         getOperators(tournament.id).then(setOperators).catch(() => {});
       }
+    },
+    onOperatorRecordingStarted: (_playerId: number, cameraSide: number) => {
+      setRecordingSides((prev) => new Set(prev).add(cameraSide));
     },
     onGameStarted: () => {
       console.log('[SignalR] GameStarted');
@@ -269,6 +273,7 @@ export default function PlayPage() {
     setHasVideoMode(t.hasVideoMode);
     setIsGameStarted(t.isGameStarted);
     setOperators([]);
+    setRecordingSides(new Set());
 
     if (!currentIsHost) {
       const hostPlayer = t.matches
@@ -526,9 +531,9 @@ export default function PlayPage() {
     clearTournament();
     setTournament(null);
     if (formatOption) {
-      await startTournament(apiPlayers, inSeason, formatOption);
+      await startTournament(apiPlayers, inSeason, formatOption, undefined, hasVideoMode);
     }
-  }, [tournament?.id, apiPlayers, inSeason, formatOption, selectedClubId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tournament?.id, apiPlayers, inSeason, formatOption, selectedClubId, hasVideoMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRestart = async () => {
     if (tournament?.id) {
@@ -546,6 +551,7 @@ export default function PlayPage() {
     setHasVideoMode(false);
     setIsGameStarted(true);
     setOperators([]);
+    setRecordingSides(new Set());
 
     const result = await loadUnfinished();
     if (result === null) goToFirstScreen();
@@ -783,6 +789,7 @@ export default function PlayPage() {
               });
             } : undefined}
             readOnly={!!tournament.id && !isHost}
+            disableBack={operatorSide > 0 || recordingSides.size > 0}
             hostName={hostName}
             earlyFinishError={earlyFinishError}
             hideControls={hasVideoMode && !isGameStarted}
@@ -790,13 +797,13 @@ export default function PlayPage() {
           {hasVideoMode && !isGameStarted && isHost && (
             <div className="match-footer">
               <p style={{ color: '#9dbdba', textAlign: 'center', margin: '0 0 8px' }}>
-                {t('video.operatorsRecording', { count: operators.length })}
+                {t('video.operatorsRecording', { count: recordingSides.size })}
               </p>
               <div className="button-row">
                 <button
                   className="btn btn-primary"
                   style={{ width: '100%' }}
-                  disabled={operators.length < 2}
+                  disabled={recordingSides.size < 2}
                   onClick={handleStartGame}
                 >
                   {t('video.startGame')}
@@ -814,6 +821,7 @@ export default function PlayPage() {
           matchIds={serverMatchIds}
           currentMatchIndex={tournament.currentMatchIndex}
           totalMatches={tournament.matches.length}
+          isFinished={tournament.isFinished}
           onExit={handleExitOperator}
         />
       )}

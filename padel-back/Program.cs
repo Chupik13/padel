@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using padel.Endpoints;
 using padel.Hubs;
@@ -9,6 +10,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<PadelDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Persist data protection keys so cookies survive server restarts
+var keysDir = Path.Combine(builder.Environment.ContentRootPath, "data", "keys");
+Directory.CreateDirectory(keysDir);
+
+builder.Services.AddDataProtection()
+    .SetApplicationName("padel")
+    .PersistKeysToFileSystem(new DirectoryInfo(keysDir));
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -45,6 +54,11 @@ builder.Services.AddHostedService<SeasonBackgroundService>();
 builder.Services.AddHostedService<TournamentAutoCleanupService>();
 builder.Services.AddHostedService<VideoMergeBackgroundService>();
 builder.Services.AddSignalR();
+
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 500 * 1024 * 1024; // 500 MB
+});
 
 builder.WebHost.ConfigureKestrel(options =>
 {

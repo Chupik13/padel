@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.4.0] — 2026-03-17
+
+### Added
+
+- **Navigation button guards** — "Next"/"Finish" disabled until score is entered; "Back" disabled during video recording.
+- **Auth retry on startup** — frontend retries `/api/auth/me` up to 3 times on 502/network error (backend wasn't ready → forced logout).
+- **Rematch with video mode** — if the previous game used video recording, rematch automatically enables it again.
+- **Video trimming** — first 2 seconds (recording start artifact) are trimmed from the final merged.mp4 via a second ffmpeg pass.
+
+### Improved
+
+- Operator — removed orientation toggle, screen always locks to landscape mode.
+- Screen rotates to landscape immediately when entering operator mode, not when pressing "Start recording".
+- Data Protection keys persisted in volume with `SetApplicationName("padel")` — sessions survive container restarts.
+
+### Fixed
+
+- WebM duration detection (Chrome doesn't write duration at format level) — ffprobe tries 3 strategies.
+
+---
+
 ## [2.3.0] — 2026-03-17
 
 ### Added

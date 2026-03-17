@@ -3159,27 +3159,6 @@ select.input {
   gap: 10px;
 }
 
-.orientation-toggle {
-  display: flex;
-  background: rgba(0,0,0,0.45);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.orientation-btn {
-  padding: 6px 16px;
-  font-size: 0.8rem;
-  border: none;
-  background: transparent;
-  color: rgba(255,255,255,0.6);
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-.orientation-btn.active {
-  background: var(--accent);
-  color: var(--text-on-accent);
-}
 
 .operator-indicator {
   position: absolute;
@@ -3226,6 +3205,18 @@ select.input {
 
 @keyframes upload-spin {
   to { transform: rotate(360deg); }
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: upload-spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
 }
 
 .upload-overlay-title {

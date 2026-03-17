@@ -15,6 +15,7 @@ interface Props {
   hostName?: string;
   earlyFinishError?: string;
   hideControls?: boolean;
+  disableBack?: boolean;
 }
 
 function getPlayer(players: Player[], id: number): Player | undefined {
@@ -251,7 +252,7 @@ function useSwipe(onSwipeLeft: () => void, onSwipeRight: () => void) {
   return { onTouchStart, onTouchEnd };
 }
 
-export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, onFinish, onCancel, onEarlyFinish, onBecomeOperator, readOnly = false, earlyFinishError, hideControls = false }: Props) {
+export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, onFinish, onCancel, onEarlyFinish, onBecomeOperator, readOnly = false, earlyFinishError, hideControls = false, disableBack = false }: Props) {
   const { players, matches, currentMatchIndex } = tournament;
   const safeIndex = matches.length > 0 ? Math.min(currentMatchIndex, matches.length - 1) : 0;
   const match = matches.length > 0 ? matches[safeIndex] : undefined;
@@ -546,10 +547,10 @@ export default function MatchView({ tournament, onUpdateScore, onNext, onPrev, o
       {!readOnly && !hideControls && activeTab === 'match' && (
         <div className="match-footer">
           <div className="button-row">
-            <button className="btn btn-secondary" onClick={handlePrev} disabled={isFirst}>
+            <button className="btn btn-secondary" onClick={handlePrev} disabled={isFirst || disableBack}>
               {t('common.back')}
             </button>
-            <button className="btn btn-primary" onClick={handleNext} style={isLast ? { fontSize: '0.85rem' } : undefined}>
+            <button className="btn btn-primary" onClick={handleNext} disabled={score1 === '' || score2 === ''} style={isLast ? { fontSize: '0.85rem' } : undefined}>
               {isLast ? t('match.finish') : t('match.next')}
             </button>
           </div>

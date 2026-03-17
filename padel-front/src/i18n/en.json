@@ -414,7 +414,8 @@
     "countdown": "Get ready",
     "waitIndicator": "WAIT",
     "landscape": "Landscape",
-    "portrait": "Portrait"
+    "portrait": "Portrait",
+    "cameraLoading": "Connecting camera..."
   },
   "table": {
     "name": "Name",

@@ -145,19 +145,39 @@ public class VideoService(PadelDbContext db, IWebHostEnvironment env, ILogger<Vi
 
     private static async Task<double> GetVideoDuration(string filePath)
     {
-        using var process = new System.Diagnostics.Process();
-        process.StartInfo = new System.Diagnostics.ProcessStartInfo
+        // Chrome WebM has Duration: N/A at format level. Try multiple strategies.
+        string[] strategies =
+        [
+            $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{filePath}\"",
+            $"-v error -select_streams v:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 \"{filePath}\"",
+            $"-v error -select_streams v:0 -show_entries packet=pts_time -of csv=p=0 \"{filePath}\""
+        ];
+
+        foreach (var args in strategies)
         {
-            FileName = "ffprobe",
-            Arguments = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{filePath}\"",
-            RedirectStandardOutput = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        process.Start();
-        var output = await process.StandardOutput.ReadToEndAsync();
-        await process.WaitForExitAsync();
-        return double.TryParse(output.Trim(), System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : 0;
+            using var process = new System.Diagnostics.Process();
+            process.StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "ffprobe",
+                Arguments = args,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            process.Start();
+            var output = await process.StandardOutput.ReadToEndAsync();
+            await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            // For packet PTS strategy, take the last line (= last packet = duration)
+            var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var line = args.Contains("packet=pts_time") ? lines.LastOrDefault() : lines.FirstOrDefault();
+            if (line != null && double.TryParse(line.Trim(), System.Globalization.CultureInfo.InvariantCulture, out var d) && d > 0)
+                return d;
+        }
+
+        return 0;
     }
 
     private static string Inv(double v) => v.ToString("F3", System.Globalization.CultureInfo.InvariantCulture);
@@ -210,17 +230,19 @@ public class VideoService(PadelDbContext db, IWebHostEnvironment env, ILogger<Vi
         const int SideW = 640;
         const int SideH = 360;
 
-        static string BuildSideFilter(string? orientation)
+        // Build rotation filter based on orientation string from frontend
+        static string BuildRotation(string? orientation) => orientation switch
         {
-            var rotate = (orientation ?? "landscape") == "portrait" ? "transpose=1," : "";
-            return $"{rotate}scale={SideW}:{SideH}:force_original_aspect_ratio=increase,crop={SideW}:{SideH}";
-        }
+            "portrait" => "transpose=1,",
+            _ => ""  // landscape/null → no rotation needed
+        };
 
-        var scaleLeft = BuildSideFilter(side1.Orientation);
-        var scaleRight = BuildSideFilter(side2.Orientation);
+        var rotateLeft = BuildRotation(side1.Orientation);
+        var rotateRight = BuildRotation(side2.Orientation);
+        var scaleLeft = $"{rotateLeft}scale={SideW}:{SideH}:force_original_aspect_ratio=increase,crop={SideW}:{SideH}";
+        var scaleRight = $"{rotateRight}scale={SideW}:{SideH}:force_original_aspect_ratio=increase,crop={SideW}:{SideH}";
 
         string filterComplex;
-        string audioMap;
         string durationFlag;
 
         var diff = Math.Abs(dur1 - dur2);
@@ -229,17 +251,17 @@ public class VideoService(PadelDbContext db, IWebHostEnvironment env, ILogger<Vi
         if (diff < 0.5 || dur1 <= 0 || dur2 <= 0)
         {
             // Nearly equal or probe failed — simple hstack
-            filterComplex = $"[0:v]{scaleLeft}[left];[1:v]{scaleRight}[right];[left][right]hstack=inputs=2[v]";
-            audioMap = dur1 >= dur2 ? "0:a?" : "1:a?";
+            var audioIdx = dur1 >= dur2 ? 0 : 1;
+            filterComplex = $"[0:v]{scaleLeft}[left];[1:v]{scaleRight}[right];[left][right]hstack=inputs=2[v];" +
+                            $"[{audioIdx}:a]acopy[a]";
             durationFlag = "";
         }
         else
         {
-            // Different durations: shift shorter video with setpts to align ends,
-            // overlay both onto a black canvas
+            // Different durations: shift shorter video with setpts to align ends
             var totalDur = Inv(maxDur);
             var offset = Inv(diff);
-            audioMap = dur1 >= dur2 ? "0:a?" : "1:a?";
+            var audioIdx = dur1 >= dur2 ? 0 : 1;
             durationFlag = $"-t {totalDur}";
 
             var leftPts = dur1 < dur2 ? $",setpts=PTS+{offset}/TB" : "";
@@ -249,15 +271,18 @@ public class VideoService(PadelDbContext db, IWebHostEnvironment env, ILogger<Vi
                             $"[0:v]{scaleLeft}{leftPts}[left];" +
                             $"[1:v]{scaleRight}{rightPts}[right];" +
                             $"[canvas][left]overlay=0:0:eof_action=pass[tmp];" +
-                            $"[tmp][right]overlay={SideW}:0:eof_action=pass[v]";
+                            $"[tmp][right]overlay={SideW}:0:eof_action=pass[v];" +
+                            $"[{audioIdx}:a]acopy[a]";
         }
 
+        // Merge without trimming first, then trim the mp4 output (WebM can't seek)
+        var rawPath = Path.Combine(dir, "merged_raw.mp4");
         var args = $"-y -i \"{side1.FilePath}\" -i \"{side2.FilePath}\" " +
                    $"-filter_complex \"{filterComplex}\" " +
-                   $"-map \"[v]\" -map {audioMap} " +
+                   $"-map \"[v]\" -map \"[a]\" " +
                    $"-c:v libx264 -c:a aac -preset ultrafast -crf 28 " +
                    $"-maxrate 2.5M -bufsize 5M -movflags +faststart " +
-                   $"{durationFlag} \"{outputPath}\"";
+                   $"{durationFlag} \"{rawPath}\"";
 
         logger.LogInformation("FFmpeg merge for matchId={MatchId}: ffmpeg {Args}", matchId, args);
 
@@ -284,20 +309,53 @@ public class VideoService(PadelDbContext db, IWebHostEnvironment env, ILogger<Vi
 
             var stderr = stderrTask.Result;
 
-            if (process.ExitCode == 0 && File.Exists(outputPath))
+            if (process.ExitCode == 0 && File.Exists(rawPath))
             {
-                var mergedSize = new FileInfo(outputPath).Length;
-                logger.LogInformation("FFmpeg merge SUCCESS for matchId={MatchId}, output size={Size}", matchId, mergedSize);
-                foreach (var v in videos)
+                logger.LogInformation("FFmpeg merge SUCCESS for matchId={MatchId}, now trimming first 2s", matchId);
+
+                // Trim first 2 seconds from the merged mp4 (fast, no re-encode)
+                var trimArgs = $"-y -ss 2 -i \"{rawPath}\" -c copy -movflags +faststart \"{outputPath}\"";
+                logger.LogInformation("FFmpeg trim for matchId={MatchId}: ffmpeg {Args}", matchId, trimArgs);
+
+                using var trimProcess = new System.Diagnostics.Process();
+                trimProcess.StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    v.MergeStatus = MergeStatus.Completed;
-                    v.MergedFilePath = outputPath;
-                    // Delete source files to save disk space
-                    if (File.Exists(v.FilePath) && v.FilePath != outputPath)
+                    FileName = "ffmpeg",
+                    Arguments = trimArgs,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                trimProcess.Start();
+                var trimStderr = await trimProcess.StandardError.ReadToEndAsync();
+                await trimProcess.StandardOutput.ReadToEndAsync();
+                await trimProcess.WaitForExitAsync();
+
+                // Clean up raw file
+                if (File.Exists(rawPath)) File.Delete(rawPath);
+
+                if (trimProcess.ExitCode == 0 && File.Exists(outputPath))
+                {
+                    var mergedSize = new FileInfo(outputPath).Length;
+                    logger.LogInformation("FFmpeg trim SUCCESS for matchId={MatchId}, output size={Size}", matchId, mergedSize);
+                    foreach (var v in videos)
                     {
-                        File.Delete(v.FilePath);
-                        logger.LogInformation("Deleted source file: {Path}", v.FilePath);
+                        v.MergeStatus = MergeStatus.Completed;
+                        v.MergedFilePath = outputPath;
+                        if (File.Exists(v.FilePath) && v.FilePath != outputPath)
+                        {
+                            File.Delete(v.FilePath);
+                            logger.LogInformation("Deleted source file: {Path}", v.FilePath);
+                        }
                     }
+                }
+                else
+                {
+                    logger.LogError("FFmpeg trim FAILED for matchId={MatchId}, exitCode={Code}, stderr={Stderr}",
+                        matchId, trimProcess.ExitCode, trimStderr);
+                    foreach (var v in videos)
+                        v.MergeStatus = MergeStatus.Failed;
                 }
             }
             else

@@ -416,7 +416,8 @@
     "countdown": "Приготовьтесь",
     "waitIndicator": "ЖДИТЕ",
     "landscape": "Горизонтально",
-    "portrait": "Вертикально"
+    "portrait": "Вертикально",
+    "cameraLoading": "Подключение камеры..."
   },
   "table": {
     "name": "Имя",
